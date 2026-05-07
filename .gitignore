@@ -97,4 +97,7 @@ packages/backend/alembic/versions/__pycache__/
 # ── Secrets / local infra ─────────────────────────────────────────────────────
 packages/db.md
 .local/
-\n# Cache and Tmp\n**/tmp/\n.venv/\n
+
+# Cache and Tmp
+**/tmp/
+
