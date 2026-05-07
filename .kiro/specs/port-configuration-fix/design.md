@@ -15,7 +15,7 @@ Additionally, we verify that all other port configurations across the system are
 - **Preservation**: All other port configurations (user portal on 3003, admin portal on 3002, backend API on 5000, orchestrator on 8000) must remain unchanged
 - **FRONTEND_URL**: Environment variable in `packages/backend/.env` that specifies the base URL for post-OAuth browser redirects
 - **OAuth Callback Flow**: The sequence where Google redirects to the backend callback endpoint, which then redirects to the frontend with JWT tokens in query parameters
-- **Vendor Portal**: The frontend application in `packages/frontend/` that runs on port 3000 by default with `next dev`
+- **Vendor Portal**: The frontend application in `packages/vendor/` that runs on port 3000 by default with `next dev`
 
 ## Bug Details
 
@@ -116,7 +116,7 @@ Assuming our root cause analysis is correct:
    - `GOOGLE_REDIRECT_URI=http://localhost:5000/api/v1/auth/google/callback` - verify this is correct
 
 3. **Verify Frontend Port Configuration**: Ensure the frontend vendor portal's package.json dev script uses default port
-   - Check `packages/frontend/package.json` for `"dev": "next dev"` (no explicit port means 3000)
+   - Check `packages/vendor/package.json` for `"dev": "next dev"` (no explicit port means 3000)
    - If explicit port is set, ensure it matches the new `FRONTEND_URL`
 
 4. **Verify User and Admin Portal Configurations**: Ensure their OAuth flows use correct ports

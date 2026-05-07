@@ -179,7 +179,7 @@
 - Error handling for SSE connection drops with retry button
 - Next.js API proxy for AI service (`/api/ai/[...path]/route.ts`)
 
-#### Vendor Portal — `packages/frontend` — UPDATED ✅
+#### Vendor Portal — `packages/vendor` — UPDATED ✅
 - Login page with email/password + Google OAuth button
 - Google OAuth callback page — reads `?token=` from redirect
 - Auth store with token refresh interceptor + `_mapUser` / `_mapVendor` field mapping
@@ -373,6 +373,6 @@ MEM0_API_KEY=<from mem0.ai>
 NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
 AI_SERVICE_URL=http://localhost:8000
 
-# packages/frontend/.env / packages/admin/.env
+# packages/vendor/.env / packages/admin/.env
 NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
 ```

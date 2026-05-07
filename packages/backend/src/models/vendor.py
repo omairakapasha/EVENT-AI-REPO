@@ -7,6 +7,11 @@ from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import ENUM
 from .category import VendorCategoryLink
 
+
+def _utcnow() -> datetime:
+    """Return current UTC time as a naive datetime (matches TIMESTAMP WITHOUT TIME ZONE columns)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 class VendorStatus(str, enum.Enum):
     PENDING = "PENDING"
     ACTIVE = "ACTIVE"
@@ -37,8 +42,8 @@ class Vendor(SQLModel, table=True):
     rating: float = Field(default=0.0)
     total_reviews: int = Field(default=0)
     
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
     
     # Relationships
     categories: List["Category"] = Relationship(back_populates="vendors", link_model=VendorCategoryLink)

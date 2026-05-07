@@ -11,9 +11,9 @@ The existing codebase has scaffolded pages for dashboard, bookings, services, av
 ## Glossary
 
 - **Vendor**: A business registered on Event-AI that offers event services (e.g., catering, photography, decoration).
-- **Vendor_Portal**: The Next.js 15 frontend application at `packages/frontend`, running on port 3002.
+- **Vendor_Portal**: The Next.js 15 frontend application at `packages/vendor`, running on port 3002.
 - **Backend**: The FastAPI application at `packages/backend`, running on port 5000.
-- **Auth_Store**: The Zustand store in `packages/frontend/src/lib/auth-store.ts` that manages JWT tokens and vendor session state.
+- **Auth_Store**: The Zustand store in `packages/vendor/src/lib/auth-store.ts` that manages JWT tokens and vendor session state.
 - **Booking**: A reservation made by a customer for a vendor's service on a specific event date.
 - **Service**: A specific offering created by a vendor (e.g., "Wedding Photography Package", "Catering for 200 guests").
 - **Availability**: A vendor's calendar of open, blocked, or tentative dates per service.

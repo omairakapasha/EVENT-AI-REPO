@@ -19,7 +19,7 @@ be tracked and verified as fixed.
 - **API_Client**: The axios instance defined in `packages/user/src/lib/api.ts`, which uses
   `localStorage.getItem('userToken')` as the bearer token.
 - **Backend**: The FastAPI application in `packages/backend/src/api/v1/`.
-- **Frontend_API_Lib**: The shared axios instance in `packages/frontend/src/lib/api.ts`, which
+- **Frontend_API_Lib**: The shared axios instance in `packages/vendor/src/lib/api.ts`, which
   uses `localStorage.getItem('accessToken')` as the bearer token.
 - **Chat_Page**: `packages/user/src/app/chat/page.tsx`.
 - **AI_Stream_Proxy**: The Next.js route handler at
@@ -46,7 +46,7 @@ localStorage key, so that authenticated API calls do not silently fail due to a 
 2. WHEN the Audit_Tool detects that Chat_Page reads `localStorage.getItem('userToken')` while
    API_Client reads `localStorage.getItem('userToken')`, THE Audit_Tool SHALL confirm the keys
    match and report no mismatch for this pair.
-3. WHEN the Audit_Tool detects that any page imports from `packages/frontend/src/lib/api.ts`
+3. WHEN the Audit_Tool detects that any page imports from `packages/vendor/src/lib/api.ts`
    (which uses `localStorage.getItem('accessToken')`), THE Audit_Tool SHALL flag a token-key
    mismatch because the User_Portal stores tokens under `'userToken'`, not `'accessToken'`.
 4. THE Audit_Tool SHALL produce a report listing each unique Token_Key found, the files that use

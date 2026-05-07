@@ -12,7 +12,7 @@
 - `GOOGLE_REDIRECT_URI=http://localhost:5000/api/v1/auth/google/callback` ✓ CORRECT
 - `CORS_ORIGINS` includes all necessary ports (3000, 3001, 3002, 3003, 5173) ✓ CORRECT
 
-**Frontend Vendor Portal (`packages/frontend/package.json`)**:
+**Frontend Vendor Portal (`packages/vendor/package.json`)**:
 - Dev script: `"next dev"` ✓ CORRECT (defaults to port 3000)
 
 **User Portal (`packages/user/package.json`)**:
@@ -103,10 +103,10 @@ All preservation requirements are met. Port configurations for user portal, admi
 
 #### 3.1 Update FRONTEND_URL in backend .env file
 - ✓ `FRONTEND_URL=http://localhost:3000` (already correct)
-- ✓ Added comment: `# Frontend vendor portal URL - must match the port where packages/frontend runs (default: 3000)`
+- ✓ Added comment: `# Frontend vendor portal URL - must match the port where packages/vendor runs (default: 3000)`
 
 #### 3.2 Verify frontend vendor portal port configuration
-- ✓ Verified `packages/frontend/package.json` has `"dev": "next dev"` (defaults to port 3000)
+- ✓ Verified `packages/vendor/package.json` has `"dev": "next dev"` (defaults to port 3000)
 - ✓ No changes needed
 
 #### 3.3 Verify other port configurations
@@ -136,7 +136,7 @@ To verify the fix works correctly, follow these steps:
 
 2. **Start the vendor portal** on port 3000:
    ```bash
-   cd packages/frontend
+   cd packages/vendor
    npm run dev
    ```
 
@@ -212,7 +212,7 @@ All preservation tests from Task 2 have been re-verified after applying the fix:
    - `FRONTEND_URL` already correctly set to `http://localhost:3000`
 
 **No Changes Needed:**
-- `packages/frontend/package.json` - already correct
+- `packages/vendor/package.json` - already correct
 - `packages/user/package.json` - already correct
 - `packages/admin/package.json` - already correct
 
@@ -232,7 +232,7 @@ cd packages/backend
 uv run uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload
 
 # Terminal 2: Start vendor portal on port 3000
-cd packages/frontend
+cd packages/vendor
 npm run dev
 ```
 

@@ -204,7 +204,7 @@ As a user with intermittent network connectivity, I want the real-time connectio
 
 - The real-time service is implemented as part of the Backend package (Fastify server) using Fastify's SSE and WebSocket support (fastify-websocket plugin). It is not a separate microservice initially, but designed to be separable later.
 
-- Client-side implementations: Frontend portals (`packages/user`, `packages/admin`, `packages/frontend`) use standard WebSocket or EventSource APIs to connect and subscribe. Libraries like `socket.io` are not used; native APIs suffice with fallback to SSE if WebSocket unavailable.
+- Client-side implementations: Frontend portals (`packages/user`, `packages/admin`, `packages/vendor`) use standard WebSocket or EventSource APIs to connect and subscribe. Libraries like `socket.io` are not used; native APIs suffice with fallback to SSE if WebSocket unavailable.
 
 - Authentication: JWT tokens from `002-user-auth` are used. Upon connection, the token is validated (via shared auth service or JWT verification). The user ID is associated with the connection and used for authorization checks on subscriptions.
 

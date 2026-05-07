@@ -74,7 +74,8 @@ class Settings(BaseSettings):
     trulens_enabled: bool = False
     trulens_groundedness_threshold: float = 0.70
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # Look for .env in the package dir first, then fall back to the monorepo root
+    model_config = SettingsConfigDict(env_file=(".env", "../../.env"), extra="ignore")
 
 
 @lru_cache

@@ -11,6 +11,10 @@ from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import ENUM
 
 
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 class InquiryStatus(str, enum.Enum):
     NEW = "NEW"
     CONTACTED = "CONTACTED"
@@ -48,8 +52,8 @@ class CustomerInquiry(SQLModel, table=True):
     vendor_responded_at: Optional[datetime] = None
     
     # Metadata
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
     
     # Relationships
     vendor: "Vendor" = Relationship(back_populates="inquiries")

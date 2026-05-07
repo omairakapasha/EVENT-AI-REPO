@@ -16,7 +16,7 @@
 ## Path Conventions
 
 - **Backend**: `packages/backend/src/`
-- **Frontend**: `packages/frontend/src/`
+- **Frontend**: `packages/vendor/src/`
 - **Database**: `packages/backend/prisma/`
 - Paths below reflect the monorepo structure
 
@@ -72,9 +72,9 @@
 
 ### Frontend Implementation for US1
 
-- [ ] T022 [P] [US1] Build profile page form using react-hook-form + zod resolver in packages/frontend/src/app/profile/page.tsx
-- [ ] T023 [US1] Integrate React Query mutation for profile update with cache invalidation in packages/frontend/src/app/profile/page.tsx
-- [ ] T024 [US1] Add logo upload UI with preview and progress indicator in packages/frontend/src/app/profile/page.tsx
+- [ ] T022 [P] [US1] Build profile page form using react-hook-form + zod resolver in packages/vendor/src/app/profile/page.tsx
+- [ ] T023 [US1] Integrate React Query mutation for profile update with cache invalidation in packages/vendor/src/app/profile/page.tsx
+- [ ] T024 [US1] Add logo upload UI with preview and progress indicator in packages/vendor/src/app/profile/page.tsx
 - [ ] T025 [P] [US1] Add form validation error display with descriptive messages
 
 **Checkpoint**: Vendor Profile Management is fully testable independently
@@ -98,10 +98,10 @@
 
 ### Frontend Implementation for US2
 
-- [ ] T032 [P] [US2] Build service list page with active/inactive filter in packages/frontend/src/app/services/page.tsx
-- [ ] T033 [US2] Build service create/edit form with pricing tier management in packages/frontend/src/app/services/new/page.tsx and packages/frontend/src/app/services/[id]/page.tsx
+- [ ] T032 [P] [US2] Build service list page with active/inactive filter in packages/vendor/src/app/services/page.tsx
+- [ ] T033 [US2] Build service create/edit form with pricing tier management in packages/vendor/src/app/services/new/page.tsx and packages/vendor/src/app/services/[id]/page.tsx
 - [ ] T034 [US2] Integrate React Query hooks for service CRUD with cache invalidation
-- [ ] T035 [US2] Build CSV bulk upload UI with progress and error report display in packages/frontend/src/app/pricing/page.tsx
+- [ ] T035 [US2] Build CSV bulk upload UI with progress and error report display in packages/vendor/src/app/pricing/page.tsx
 
 **Checkpoint**: Service & Pricing Management is fully testable independently
 
@@ -124,7 +124,7 @@
 
 ### Frontend Implementation for US3
 
-- [ ] T042 [P] [US3] Build booking calendar view (BigCalendar or equivalent) with status color indicators in packages/frontend/src/app/bookings/page.tsx
+- [ ] T042 [P] [US3] Build booking calendar view (BigCalendar or equivalent) with status color indicators in packages/vendor/src/app/bookings/page.tsx
 - [ ] T043 [US3] Add confirm/reject/progress action buttons with confirmation modals (reject requires reason)
 - [ ] T044 [US3] Integrate React Query hooks for booking list with cache invalidation on mutations
 - [ ] T045 [US3] Integrate SSE subscription via EventBus — auto invalidate React Query cache on booking.created / booking.status_changed events for real-time calendar updates
@@ -149,7 +149,7 @@
 
 ### Frontend Implementation for US4
 
-- [ ] T051 [P] [US4] Build availability calendar page with drag-and-block UI (BigCalendar or similar) in packages/frontend/src/app/availability/page.tsx
+- [ ] T051 [P] [US4] Build availability calendar page with drag-and-block UI (BigCalendar or similar) in packages/vendor/src/app/availability/page.tsx
 - [ ] T052 [US4] Integrate React Query hooks for availability CRUD with cache invalidation
 - [ ] T053 [US4] Display blocked dates visually (distinct color/pattern) on the calendar
 
@@ -171,7 +171,7 @@
 
 ### Frontend Implementation for US5
 
-- [ ] T057 [P] [US5] Build earnings dashboard page with total revenue, booking count, and empty state in packages/frontend/src/app/earnings/page.tsx
+- [ ] T057 [P] [US5] Build earnings dashboard page with total revenue, booking count, and empty state in packages/vendor/src/app/earnings/page.tsx
 - [ ] T058 [US5] Add monthly bar chart using recharts or shadcn charts in earnings page
 - [ ] T059 [US5] Add time period filter selector (this month, last 3 months, this year)
 - [ ] T060 [US5] Integrate React Query hooks for earnings data with cache invalidation
@@ -193,7 +193,7 @@
 
 ### Frontend Implementation for US6
 
-- [ ] T063 [P] [US6] Build dashboard page with stat cards (totalServices, activeServices, totalBookings, pendingBookings) in packages/frontend/src/app/dashboard/page.tsx
+- [ ] T063 [P] [US6] Build dashboard page with stat cards (totalServices, activeServices, totalBookings, pendingBookings) in packages/vendor/src/app/dashboard/page.tsx
 - [ ] T064 [US6] Display recent activity log list (last 10 entries) with action, timestamp, entity type
 - [ ] T065 [US6] Integrate SSE subscription for real-time dashboard updates — no polling
 
@@ -215,7 +215,7 @@
 
 ### Frontend Implementation for US7
 
-- [ ] T069 [P] [US7] Build booking detail message thread UI with send form in packages/frontend/src/app/bookings/[id]/page.tsx
+- [ ] T069 [P] [US7] Build booking detail message thread UI with send form in packages/vendor/src/app/bookings/[id]/page.tsx
 - [ ] T070 [US7] Integrate React Query hooks for message list and send with cache invalidation
 - [ ] T071 [US7] Add real-time message updates via SSE — new messages appear without refresh
 
@@ -255,7 +255,7 @@
 **Purpose**: Achieve ≥ 60% component test coverage (SC-007) and backend RBAC integration tests
 
 ### Frontend Tests
-- [ ] T083 [P] Write React Testing Library tests for profile page form interactions in packages/frontend/src/__tests__/
+- [ ] T083 [P] Write React Testing Library tests for profile page form interactions in packages/vendor/src/__tests__/
 - [ ] T084 [P] Write React Testing Library tests for service CRUD form interactions
 - [ ] T085 [P] Write React Testing Library tests for booking calendar status transitions
 - [ ] T086 [P] Write React Testing Library tests for earnings dashboard rendering and filters
@@ -370,7 +370,7 @@ After MVP (US1–US4) is stable:
 - CDN service exists at packages/backend/src/services/cdn.service.ts — reuse for logo upload
 - EventBus service exists at packages/backend/src/services/event-bus.service.ts — reuse for domain events
 - Notification service exists at packages/backend/src/services/notification.service.ts — extend for booking message notifications
-- Frontend pages already exist at packages/frontend/src/app/{dashboard,profile,services,bookings,availability,pricing}/ — extend them
+- Frontend pages already exist at packages/vendor/src/app/{dashboard,profile,services,bookings,availability,pricing}/ — extend them
 - All API responses MUST follow envelope format: { success, data, meta } / { success, error }
 - All frontend state MUST use React Query (TanStack Query) — no raw fetch/useState for server data
 - Suspended vendors (status=SUSPENDED) MUST be blocked from profile updates with HTTP 403

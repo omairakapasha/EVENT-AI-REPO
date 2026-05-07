@@ -79,7 +79,12 @@ class Settings(BaseSettings):
         description="Weight applied to semantic scores in hybrid search (must sum to 1.0 with hybrid_trigram_weight)",
     )
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        # Look for .env in the package dir first, then fall back to the monorepo root
+        env_file=(".env", "../../.env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     @field_validator("database_url", mode="before")
     @classmethod

@@ -13,7 +13,7 @@
 | Package | Purpose |
 |---|---|
 | `packages/user` | User portal — AI planning, bookings, vendor discovery |
-| `packages/frontend` | Vendor portal — onboarding, service management, bookings |
+| `packages/vendor` | Vendor portal — onboarding, service management, bookings |
 | `packages/admin` | Admin portal — moderation, approvals, analytics |
 | `packages/backend` | REST API — auth, bookings, events, payments, business logic |
 | `packages/agentic_event_orchestrator` | AI service — agents, Agentic RAG, MCP tools |

@@ -8,7 +8,7 @@
   - **GOAL**: Surface counterexamples that demonstrate the OAuth redirect port mismatch bug
   - **Manual Testing Approach**: This is a configuration bug that requires manual verification
   - Test implementation details from Bug Condition in design:
-    - Start the vendor portal on port 3000 using `next dev` in `packages/frontend/`
+    - Start the vendor portal on port 3000 using `next dev` in `packages/vendor/`
     - Verify the vendor portal is accessible at `http://localhost:3000`
     - Read `packages/backend/.env` and verify `FRONTEND_URL=http://localhost:3001` (incorrect value)
     - Start the backend server on port 5000
@@ -71,7 +71,7 @@
     - Open `packages/backend/.env`
     - Locate the line `FRONTEND_URL=http://localhost:3001`
     - Change the value to `FRONTEND_URL=http://localhost:3000`
-    - Add a comment above the line explaining: `# Frontend vendor portal URL - must match the port where packages/frontend runs (default: 3000)`
+    - Add a comment above the line explaining: `# Frontend vendor portal URL - must match the port where packages/vendor runs (default: 3000)`
     - Save the file
     - _Bug_Condition: isBugCondition(input) where input.isSuccessfulOAuthCallback == true AND settings.frontend_url == "http://localhost:3001" AND actualFrontendPort == 3000_
     - _Expected_Behavior: OAuth callbacks redirect to http://localhost:3000/dashboard with valid JWT tokens, ensuring users can access the application_
@@ -79,7 +79,7 @@
     - _Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
   - [x] 3.2 Verify frontend vendor portal port configuration
-    - Open `packages/frontend/package.json`
+    - Open `packages/vendor/package.json`
     - Locate the `"dev"` script in the `"scripts"` section
     - Verify it is set to `"next dev"` (no explicit port, defaults to 3000)
     - If an explicit port is set (e.g., `"next dev -p 3001"`), change it to `"next dev"` or `"next dev -p 3000"`

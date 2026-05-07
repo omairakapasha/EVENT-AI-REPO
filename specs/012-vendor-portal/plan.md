@@ -48,7 +48,7 @@ packages/backend/
 │   │   ├── vendor.routes.ts          # Extends dashboard and availability
 │   │   └── services.routes.ts        # [NEW] Endpoints to manage vendor services
 
-packages/frontend/
+packages/vendor/
 ├── src/
 │   ├── app/                          # Next.js App router
 │   │   ├── dashboard/page.tsx        

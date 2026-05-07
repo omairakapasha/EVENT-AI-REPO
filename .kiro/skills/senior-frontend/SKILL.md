@@ -30,8 +30,8 @@ Read existing pages and components before writing anything. Match the project's 
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Next.js 16 (App Router) — `packages/user`, `packages/frontend` |
-| Styling | Tailwind CSS v4 (`packages/user`), v3 (`packages/frontend`) |
+| Framework | Next.js 16 (App Router) — `packages/user`, `packages/vendor` |
+| Styling | Tailwind CSS v4 (`packages/user`), v3 (`packages/vendor`) |
 | Components | `@event-ai/ui` shared package (Button, Card, Input, Badge) + Radix UI primitives |
 | State | Zustand (global), TanStack Query v5 (server state) |
 | Forms | React Hook Form + Zod |

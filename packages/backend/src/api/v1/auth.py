@@ -28,6 +28,8 @@ from src.config.database import get_settings, get_session
 from src.models.user import User, RefreshToken, PasswordResetToken
 from src.services.auth_service import auth_service
 from src.services.google_oauth_service import google_oauth_service
+from src.services.otp_service import otp_service
+from src.models.email_otp import EmailOTP
 from src.schemas.auth import (
     UserRegister,
     UserLogin,
@@ -109,8 +111,64 @@ async def register(
     tokens = await auth_service.create_tokens(session, user)
     await session.commit()
 
+    # Issue OTP and send verification email (fire-and-forget)
+    display_name = f"{user_in.first_name or ''} {user_in.last_name or ''}".strip() or user_in.email
+    await otp_service.issue_otp(session, user.id, user.email, display_name)
+
     log.info("auth.register.success", user_id=str(user.id), email=user.email, ip=client_ip)
     return tokens
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Email OTP Verification
+# ─────────────────────────────────────────────────────────────────────────────
+
+from pydantic import BaseModel as _BaseModel
+from ...api.deps import get_current_user as _get_current_user
+
+class OTPVerifyRequest(_BaseModel):
+    code: str
+
+
+@router.post(
+    "/verify-email",
+    summary="Verify email with 6-digit OTP",
+)
+async def verify_email(
+    body: OTPVerifyRequest,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(_get_current_user),
+):
+    """Verify the authenticated user's email using a 6-digit OTP."""
+    await otp_service.verify_otp(session, current_user.id, body.code)
+
+    current_user.email_verified = True
+    await session.commit()
+
+    log.info("auth.email_verified", user_id=str(current_user.id), email=current_user.email)
+    return {"success": True, "data": {"message": "Email verified successfully."}, "meta": {}}
+
+
+@router.post(
+    "/resend-otp",
+    summary="Resend email verification OTP",
+)
+async def resend_otp(
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(_get_current_user),
+):
+    """Resend a new OTP to the authenticated user's email."""
+    if current_user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "EMAIL_ALREADY_VERIFIED", "message": "Email is already verified."},
+        )
+
+    display_name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or current_user.email
+    await otp_service.issue_otp(session, current_user.id, current_user.email, display_name)
+
+    log.info("auth.otp_resent", user_id=str(current_user.id), email=current_user.email)
+    return {"success": True, "data": {"message": "Verification code sent."}, "meta": {}}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

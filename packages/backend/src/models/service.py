@@ -3,6 +3,10 @@ from typing import Optional
 from datetime import datetime, timezone
 from sqlmodel import Field, SQLModel, Relationship
 
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 class Service(SQLModel, table=True):
     __tablename__ = "services"
     
@@ -18,7 +22,7 @@ class Service(SQLModel, table=True):
     
     is_active: bool = Field(default=True)
     
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
     
     vendor: "Vendor" = Relationship(back_populates="services")

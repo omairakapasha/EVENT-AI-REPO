@@ -214,7 +214,7 @@ As an administrator, I want to review and approve vendor registrations and signi
 
 - Geographic location filtering uses city/region fields (text) and optionally coordinates for proximity search. Full geospatial queries with radius may use PostGIS if needed; pgvector is not used for search (vector search for semantic matching is separate and not required).
 
-- The marketplace is a Next.js frontend portal (`packages/frontend` per constitution) that consumes REST API endpoints from Backend package. This spec defines only the backend API and data model; frontend UI implementation is separate.
+- The marketplace is a Next.js frontend portal (`packages/vendor` per constitution) that consumes REST API endpoints from Backend package. This spec defines only the backend API and data model; frontend UI implementation is separate.
 
 - Vendor profile data model includes fields for business name, description, contact, services, location, portfolio. Additional fields (insurance, licenses, certifications) may be added later; this is the MVP set.
 

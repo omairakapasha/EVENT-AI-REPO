@@ -20,14 +20,14 @@ services:
     deploy:
       resources: {}            # no limits in dev
 
-  frontend:
+  vendor:
     build:
       target: deps             # stop at deps stage — has node_modules
     environment:
       NODE_ENV: development
     volumes:
-      - ./packages/frontend/src:/app/src:ro
-      - ./packages/frontend/public:/app/public:ro
+      - ./packages/vendor/src:/app/src:ro
+      - ./packages/vendor/public:/app/public:ro
     command: pnpm dev
     deploy:
       resources: {}

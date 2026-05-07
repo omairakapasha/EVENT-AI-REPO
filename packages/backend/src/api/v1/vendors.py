@@ -22,6 +22,8 @@ from ...schemas.vendor_availability import AvailabilityUpsert, BulkAvailabilityU
 from ...services.vendor_service import vendor_service
 from ...services.vendor_dashboard_service import vendor_dashboard_service
 from ...services.vendor_availability_service import vendor_availability_service
+from ...services.vendor_api_key_service import vendor_api_key_service
+from ...schemas.vendor_api_key import VendorApiKeyCreate, VendorApiKeyRead, VendorApiKeyCreated
 from src.models.booking import Booking, BookingRead, BookingStatus
 import structlog
 
@@ -314,3 +316,46 @@ async def vendor_update_booking_status(
         session, booking_id, body.status, current_user.id, reason=body.reason
     )
     return {"success": True, "data": BookingRead.model_validate(updated), "meta": {}}
+
+
+# ── API Keys ──────────────────────────────────────────────────────────────────
+
+@router.get("/me/api-keys", response_model=list[VendorApiKeyRead])
+async def list_api_keys(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """List all API keys for the authenticated vendor."""
+    vendor = await _get_vendor_or_404(session, current_user.id)
+    return await vendor_api_key_service.list_keys(session, vendor.id)
+
+
+@router.post(
+    "/me/api-keys",
+    response_model=VendorApiKeyCreated,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_api_key(
+    body: VendorApiKeyCreate,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Create a new API key for the authenticated vendor.
+
+    The `raw_key` field in the response is shown **only once** — store it
+    securely. It cannot be retrieved again.
+    """
+    vendor = await _get_vendor_or_404(session, current_user.id)
+    return await vendor_api_key_service.create_key(session, vendor.id, body)
+
+
+@router.delete("/me/api-keys/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_api_key(
+    key_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Revoke (soft-delete) an API key. This action is irreversible."""
+    vendor = await _get_vendor_or_404(session, current_user.id)
+    await vendor_api_key_service.revoke_key(session, vendor.id, key_id)

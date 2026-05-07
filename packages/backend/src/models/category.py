@@ -3,6 +3,10 @@ import uuid
 from typing import Optional, List
 from sqlmodel import Field, SQLModel, Relationship
 
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 class VendorCategoryLink(SQLModel, table=True):
     __tablename__ = "vendor_categories"
     
@@ -18,7 +22,7 @@ class Category(SQLModel, table=True):
     icon_url: Optional[str] = None
     display_order: int = Field(default=0)
     is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
 
     vendors: List["Vendor"] = Relationship(back_populates="categories", link_model=VendorCategoryLink)

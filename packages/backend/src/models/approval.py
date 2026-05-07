@@ -6,6 +6,10 @@ import enum
 from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import ENUM, JSONB
 
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 class ApprovalType(str, enum.Enum):
     NEW_REGISTRATION = "NEW_REGISTRATION"
     PROFILE_EDIT = "PROFILE_EDIT"
@@ -34,7 +38,7 @@ class ApprovalRequest(SQLModel, table=True):
     decision_notes: Optional[str] = None
     reviewed_by: Optional[uuid.UUID] = Field(foreign_key="users.id", nullable=True)
     
-    submitted_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    submitted_date: datetime = Field(default_factory=_utcnow)
     reviewed_date: Optional[datetime] = None
     
     vendor: "Vendor" = Relationship(back_populates="approvals")

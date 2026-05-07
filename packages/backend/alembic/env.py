@@ -33,19 +33,33 @@ target_metadata = SQLModel.metadata
 # ... etc.
 
 
-def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
+def _migration_url() -> str:
+    """Return DIRECT_URL for migrations (bypasses pgbouncer pooler).
 
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
+    The AGENTS.md rule: use DIRECT_URL for Alembic, DATABASE_URL for runtime.
+    Falls back to database_url if DIRECT_URL is not set.
     """
-    url = get_settings().database_url
+    import os
+    direct = os.environ.get("DIRECT_URL") or get_settings().direct_url
+    if direct:
+        # Convert to asyncpg driver and strip sslmode (handled via connect_args)
+        url = direct
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+        parsed = urlparse(url)
+        params = parse_qs(parsed.query, keep_blank_values=True)
+        params.pop("sslmode", None)
+        new_query = urlencode({k: v[0] for k, v in params.items()})
+        return urlunparse(parsed._replace(query=new_query))
+    return get_settings().database_url
+
+
+def run_migrations_offline() -> None:
+    """Run migrations in 'offline' mode."""
+    url = _migration_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -67,16 +81,15 @@ def do_run_migrations(connection: Connection) -> None:
 async def run_async_migrations() -> None:
     """In this scenario we need to create an Engine
     and associate a connection with the context.
-
     """
-
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = get_settings().database_url
+    configuration["sqlalchemy.url"] = _migration_url()
 
     connectable = async_engine_from_config(
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args={"ssl": "require"},
     )
 
     async with connectable.connect() as connection:

@@ -40,13 +40,13 @@ services:
         max_attempts: 3
 
   # ── Vendor Portal (Next.js) ────────────────────────────────────────────────
-  frontend:
+  vendor:
     build:
-      context: ./packages/frontend
+      context: ./packages/vendor
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
-    container_name: event-ai-frontend
+    container_name: event-ai-vendor
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1

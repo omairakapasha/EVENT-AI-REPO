@@ -3,6 +3,7 @@ Models package.
 """
 from .vendor import Vendor, VendorStatus
 from .vendor_embedding import VendorEmbedding
+from .vendor_api_key import VendorApiKey
 from .category import Category, VendorCategoryLink
 from .service import Service
 from .approval import ApprovalRequest, ApprovalType, ApprovalStatus
@@ -66,4 +67,5 @@ __all__ = [
     "NotificationType",
     "NotificationRead",
     "VendorEmbedding",
+    "VendorApiKey",
 ]
