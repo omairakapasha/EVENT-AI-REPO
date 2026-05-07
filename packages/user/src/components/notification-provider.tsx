@@ -26,15 +26,11 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export function NotificationProvider({ children }: { children: ReactNode }) {
     const queryClient = useQueryClient();
 
-    // Only fetch when user has an auth token — prevents 401 spam on public pages
-    const hasToken = typeof window !== "undefined" && !!localStorage.getItem("userToken");
-
-    // Fetch initial notifications using React Query
+    // Fetch notifications using React Query — httpOnly cookies handle auth
     const { data } = useQuery({
         queryKey: ["notifications"],
         queryFn: getUserNotifications,
-        enabled: hasToken,
-        refetchInterval: hasToken ? 60000 : false, // Fallback refetch every minute
+        refetchInterval: 60000, // Refetch every minute
         staleTime: 30000,
     });
 
@@ -84,29 +80,21 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         }));
     };
 
-    // Real-time SSE synchronization
+    // Real-time SSE synchronization — token is in httpOnly cookie
     useEffect(() => {
         let eventSource: EventSource | null = null;
-        
-        const connectSSE = () => {
-            const token = localStorage.getItem("userToken");
-            if (!token) return;
 
+        const connectSSE = () => {
             const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
-            // Native EventSource doesn't support headers for standard GET requests out of the box in browsers.
-            // Using a simple workaround: If we must use token in header, we'd use something like @microsoft/fetch-event-source 
-            // In lieu of adding external packages right now, we can pass it as a query param or 
-            // accept that the token might be read from a cookie. Since fastify-cors could allow it, we do this:
-            eventSource = new EventSource(`${API_URL}/sse/stream?token=${token}`);
+            // Token is in httpOnly cookie, sent automatically via EventSource
+            eventSource = new EventSource(`${API_URL}/sse/stream`);
 
             eventSource.addEventListener('notification', (e) => {
-                // When a notification event hits the SSE stream, invalidate the RQ cache to trigger a clean UI reload.
                 queryClient.invalidateQueries({ queryKey: ["notifications"] });
             });
 
-            eventSource.onerror = (e) => {
+            eventSource.onerror = () => {
                 eventSource?.close();
-                // Simple exponential backoff or reconnect after 5s
                 setTimeout(connectSSE, 5000);
             };
         };

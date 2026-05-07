@@ -1,14 +1,13 @@
 """
 SSE Real-Time Stream endpoint (008).
-Browsers connect via EventSource with JWT as query param:
-  GET /api/v1/sse/stream?token=<jwt>
-(EventSource API does not support custom headers)
+Browsers connect via EventSource; JWT is read from httpOnly cookie.
+(EventSource API does not support custom headers, so cookie auth is used)
 """
 import asyncio
 import json
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
 from src.services.sse_manager import SSEConnectionManager, get_connection_manager
@@ -39,13 +38,20 @@ async def _event_stream(
 
 @router.get("/stream")
 async def sse_stream(
-    token: str = Query(..., description="JWT access token"),
+    request: Request,
     cm: SSEConnectionManager = Depends(get_connection_manager),
 ):
     """
-    Server-Sent Events stream. Authenticate via ?token=<jwt>.
+    Server-Sent Events stream. Authenticates via httpOnly access_token cookie.
     Returns a persistent text/event-stream response.
     """
+    token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "AUTH_UNAUTHORIZED", "message": "No access token cookie found."},
+        )
+
     async with async_session_maker() as session:
         try:
             user = await AuthService.verify_access_token(token, session)

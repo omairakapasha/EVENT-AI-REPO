@@ -15,17 +15,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     const [socket, setSocket] = useState<Socket | null>(null);
 
     useEffect(() => {
-        // Only connect if user has a valid auth token
-        const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
-
-        if (!token) {
-            // No token — don't establish socket connection
-            return;
-        }
-
+        // Auth token is in httpOnly cookie; socket.io sends cookies automatically
         const socketInstance = io(SOCKET_URL, {
             autoConnect: false,
-            auth: { token },
+            withCredentials: true,
         });
 
         socketInstance.connect();

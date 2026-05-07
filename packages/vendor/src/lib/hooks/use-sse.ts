@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { getAccessToken } from '../api';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -17,10 +16,10 @@ export function useSSE(enabled: boolean = true) {
     const [reconnecting, setReconnecting] = useState(false);
 
     function connect() {
-        const token = getAccessToken();
-        if (!token || !enabled) return;
+        if (!enabled) return;
 
-        const url = `${API_URL}/sse/stream?token=${encodeURIComponent(token)}`;
+        // Token is in httpOnly cookie, sent automatically via withCredentials
+        const url = `${API_URL}/sse/stream`;
         const es = new EventSource(url);
         esRef.current = es;
 

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import {
     LayoutDashboard,
     Briefcase,
@@ -13,6 +13,8 @@ import {
     Bell,
     Wifi,
     WifiOff,
+    AlertCircle,
+    RefreshCw,
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { useAuthStore } from '@/lib/auth-store';
@@ -107,43 +109,128 @@ function NotificationBell() {
     );
 }
 
+const VENDOR_CHECK_TIMEOUT = 15000; // 15 seconds timeout
+
 export function VendorLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
-    const { user, vendor, isAuthenticated, logout, ensureVendorProfile, vendorCheckStatus } = useAuthStore();
+    const { user, vendor, isAuthenticated, logout, ensureVendorProfile, vendorCheckStatus, error, clearError } = useAuthStore();
+    const [checkError, setCheckError] = useState<string | null>(null);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const isMountedRef = useRef(true);
 
-    // Kick off the vendor profile check once on mount.
-    // ensureVendorProfile is idempotent and concurrency-safe — guarded by
-    // vendorCheckStatus so concurrent calls never fire two parallel fetches.
+    // Cleanup on unmount
     useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+            }
+        };
+    }, []);
+
+    // Kick off the vendor profile check once on mount with timeout protection
+    useEffect(() => {
+        if (!isAuthenticated) {
+            router.replace('/login');
+            return;
+        }
+
+        // Reset error state on re-check
+        setCheckError(null);
+        clearError();
+
+        // Set a timeout to detect stuck checks
+        timeoutRef.current = setTimeout(() => {
+            if (isMountedRef.current && vendorCheckStatus === 'checking') {
+                setCheckError('Vendor profile check timed out. Please retry.');
+            }
+        }, VENDOR_CHECK_TIMEOUT);
+
         ensureVendorProfile();
-    // Re-run if auth state changes (e.g. token refresh, OAuth callback)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAuthenticated]);
+
+        return () => {
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+            }
+        };
+    }, [isAuthenticated, router, clearError]);
 
     // Once the check is done and there's no vendor, redirect to onboarding.
     useEffect(() => {
         if (vendorCheckStatus !== 'done') return;
-        if (isAuthenticated && !vendor) {
+        // Only redirect if we're still mounted and not in an error state
+        if (isAuthenticated && !vendor && !checkError) {
             router.replace('/register?incomplete=1');
         }
-    }, [vendorCheckStatus, isAuthenticated, vendor, router]);
+    }, [vendorCheckStatus, isAuthenticated, vendor, router, checkError]);
 
     // SSE only after vendor is confirmed
     const { reconnecting } = useSSE(isAuthenticated && vendorCheckStatus === 'done' && !!vendor);
 
-    const handleLogout = async () => {
-        await logout();
-        router.push('/login');
+    const handleLogoutClick = () => {
+        setShowLogoutConfirm(true);
     };
 
+    const handleConfirmLogout = async () => {
+        setIsLoggingOut(true);
+        try {
+            await logout();
+            router.push('/login');
+        } finally {
+            setIsLoggingOut(false);
+            setShowLogoutConfirm(false);
+        }
+    };
+
+    // Show error state with retry option if check failed or timed out
+    if (checkError || (vendorCheckStatus === 'done' && error)) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-surface-50 dark:bg-surface-950 p-4">
+                <div className="max-w-md text-center">
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                        <AlertCircle className="h-7 w-7 text-red-600 dark:text-red-400" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-50 mb-2">
+                        Failed to load vendor profile
+                    </h2>
+                    <p className="text-surface-500 dark:text-surface-400 mb-6">
+                        {checkError || error || 'An unexpected error occurred while loading your profile.'}
+                    </p>
+                    <div className="flex gap-3 justify-center">
+                        <button
+                            onClick={() => {
+                                setCheckError(null);
+                                clearError();
+                                ensureVendorProfile();
+                            }}
+                            className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+                        >
+                            <RefreshCw className="h-4 w-4" />
+                            Retry
+                        </button>
+                        <button
+                            onClick={() => {
+                                logout().then(() => router.push('/login'));
+                            }}
+                            className="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-100 dark:border-surface-700 dark:text-surface-300 dark:hover:bg-surface-800"
+                        >
+                            Log Out
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     // Block all rendering until the vendor check resolves.
-    // This is the race condition fix — no child page fires API calls until we know
-    // the vendor profile exists.
     if (vendorCheckStatus !== 'done') {
         return (
             <div className="flex min-h-screen items-center justify-center bg-surface-50 dark:bg-surface-950">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent" />
+                <span className="ml-3 text-surface-500">Loading vendor profile...</span>
             </div>
         );
     }
@@ -153,6 +240,7 @@ export function VendorLayout({ children }: { children: React.ReactNode }) {
         return (
             <div className="flex min-h-screen items-center justify-center bg-surface-50 dark:bg-surface-950">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent" />
+                <span className="ml-3 text-surface-500">Redirecting to onboarding...</span>
             </div>
         );
     }
@@ -210,10 +298,14 @@ export function VendorLayout({ children }: { children: React.ReactNode }) {
                             </p>
                             <p className="truncate text-xs text-surface-500">{user?.email}</p>
                         </div>
-                        <button onClick={handleLogout} className="rounded-lg p-1.5 text-surface-400 hover:bg-surface-100 hover:text-surface-600 dark:hover:bg-surface-800" title="Logout">
-                            <LogOut className="h-4 w-4" />
-                        </button>
                     </div>
+                    <button
+                        onClick={handleLogoutClick}
+                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
+                    >
+                        <LogOut className="h-4 w-4" />
+                        Sign Out
+                    </button>
                 </div>
             </aside>
 
@@ -238,6 +330,50 @@ export function VendorLayout({ children }: { children: React.ReactNode }) {
 
                 <main className="flex-1 p-8">{children}</main>
             </div>
+
+            {/* Logout Confirmation Dialog */}
+            {showLogoutConfirm && (
+                <>
+                    <div className="fixed inset-0 z-50 bg-black/50" onClick={() => !isLoggingOut && setShowLogoutConfirm(false)} />
+                    <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border border-surface-200 bg-white p-6 shadow-xl dark:border-surface-700 dark:bg-surface-900">
+                        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                            <LogOut className="h-6 w-6 text-red-600 dark:text-red-400" />
+                        </div>
+                        <h3 className="mb-2 text-lg font-semibold text-surface-900 dark:text-surface-50">
+                            Sign Out
+                        </h3>
+                        <p className="mb-6 text-surface-500 dark:text-surface-400">
+                            Are you sure you want to sign out of your vendor account?
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowLogoutConfirm(false)}
+                                disabled={isLoggingOut}
+                                className="flex-1 rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-50 dark:border-surface-700 dark:text-surface-300 dark:hover:bg-surface-800"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmLogout}
+                                disabled={isLoggingOut}
+                                className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                            >
+                                {isLoggingOut ? (
+                                    <>
+                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                        Signing out...
+                                    </>
+                                ) : (
+                                    <>
+                                        <LogOut className="h-4 w-4" />
+                                        Sign Out
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 }

@@ -1,22 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import api, { setAccessToken, setRefreshToken, clearTokens, getApiError } from './api';
-
-// ── Secure pending credentials (module-scoped, never persisted) ───────────────
-let _pendingCredentials: { email: string; password: string } | null = null;
-let _pendingTimeout: ReturnType<typeof setTimeout> | null = null;
-const PENDING_TIMEOUT_MS = 5 * 60 * 1000;
-
-function setPendingCredentials(email: string, password: string) {
-    clearPendingCredentials();
-    _pendingCredentials = { email, password };
-    _pendingTimeout = setTimeout(clearPendingCredentials, PENDING_TIMEOUT_MS);
-}
-function clearPendingCredentials() {
-    _pendingCredentials = null;
-    if (_pendingTimeout) { clearTimeout(_pendingTimeout); _pendingTimeout = null; }
-}
-function getPendingCredentials() { return _pendingCredentials; }
+import api, { getApiError } from './api';
 
 // ── Mappers ───────────────────────────────────────────────────────────────────
 export function _mapUser(u: Record<string, unknown>): User {
@@ -52,21 +36,14 @@ export function _mapVendor(v: Record<string, unknown>): Vendor {
     };
 }
 
-// ── Cookie helpers ────────────────────────────────────────────────────────────
-// SameSite=Lax; Secure omitted for localhost dev. Add Secure in production.
-function setAuthCookie() {
-    if (typeof document !== 'undefined') {
-        document.cookie = 'is-authenticated=true; path=/; max-age=604800; SameSite=Lax';
-    }
-}
+// ── Cookie helpers (non-httpOnly, for client-side UX only) ───────────────────
 function setRoleCookie(role: string) {
     if (typeof document !== 'undefined') {
         document.cookie = `user-role=${role}; path=/; max-age=604800; SameSite=Lax`;
     }
 }
-function clearAuthCookies() {
+function clearRoleCookie() {
     if (typeof document !== 'undefined') {
-        document.cookie = 'is-authenticated=; path=/; max-age=0; SameSite=Lax';
         document.cookie = 'user-role=; path=/; max-age=0; SameSite=Lax';
     }
 }
@@ -119,12 +96,8 @@ export interface RegisterData {
 /**
  * vendorCheckStatus state machine:
  *   idle     → check has not started (initial / after logout / after login)
- *   checking → fetch in-flight (only ONE fetch allowed at a time — guarded by this flag)
- *   done     → resolved; vendor is either populated or null (no profile exists)
- *
- * NOTE: vendorCheckStatus is intentionally NOT persisted to localStorage.
- * On every page load we re-verify the vendor profile against the backend so
- * stale localStorage data never causes a false "done" state.
+ *   checking → fetch in-flight (only ONE fetch allowed at a time)
+ *   done     → resolved; vendor is either populated or null
  */
 interface AuthState {
     user: User | null;
@@ -137,13 +110,13 @@ interface AuthState {
     vendorCheckStatus: 'idle' | 'checking' | 'done';
 
     login: (email: string, password: string) => Promise<boolean>;
-    loginWithTokens: (token: string, refreshToken: string) => Promise<void>;
     verify2FA: (code: string) => Promise<boolean>;
     register: (data: RegisterData) => Promise<boolean>;
     logout: () => Promise<void>;
     fetchVendorProfile: () => Promise<void>;
     ensureVendorProfile: () => Promise<void>;
     updateVendorProfile: (data: Partial<Vendor>) => Promise<void>;
+    loginWithTokens: (token: string, refreshToken: string) => Promise<void>;
     clearError: () => void;
 }
 
@@ -157,7 +130,6 @@ export const useAuthStore = create<AuthState>()(
             error: null,
             requiresTwoFactor: false,
             pendingEmail: null,
-            // Always start idle — never persisted, re-checked on every mount
             vendorCheckStatus: 'idle' as const,
 
             // ── Login ─────────────────────────────────────────────────────────
@@ -167,27 +139,22 @@ export const useAuthStore = create<AuthState>()(
                     const response = await api.post('/users/login', { email, password });
 
                     if (response.data.requiresTwoFactor) {
-                        setPendingCredentials(email, password);
                         set({ requiresTwoFactor: true, pendingEmail: email, isLoading: false });
                         return false;
                     }
 
-                    const payload = response.data.data ?? response.data;
-                    const { token, refresh_token, user } = payload;
-                    setAccessToken(token);
-                    setRefreshToken(refresh_token);
-                    setAuthCookie();
-                    setRoleCookie(user.role ?? 'user');
-                    clearPendingCredentials();
+                    // Backend sets httpOnly cookies; fetch user data
+                    const userResp = await api.get('/users/me');
+                    const userData = userResp.data.data ?? userResp.data;
+                    setRoleCookie(userData.role ?? 'user');
 
                     set({
-                        user: _mapUser(user),
+                        user: _mapUser(userData),
                         vendor: null,
                         isAuthenticated: true,
                         isLoading: false,
                         requiresTwoFactor: false,
                         pendingEmail: null,
-                        // Reset so ensureVendorProfile re-runs after login
                         vendorCheckStatus: 'idle',
                     });
                     return true;
@@ -197,49 +164,28 @@ export const useAuthStore = create<AuthState>()(
                 }
             },
 
-            // ── OAuth token login ─────────────────────────────────────────────
-            loginWithTokens: async (token, refreshToken) => {
-                setAccessToken(token);
-                setRefreshToken(refreshToken);
-                setAuthCookie();
+            // ── 2FA ───────────────────────────────────────────────────────────
+            verify2FA: async (code) => {
+                set({ isLoading: true, error: null });
+                const { pendingEmail } = get();
+                if (!pendingEmail) {
+                    set({ error: 'Login session expired. Please try again.', isLoading: false });
+                    return false;
+                }
                 try {
+                    await api.post('/auth/login', {
+                        email: pendingEmail,
+                        password: '',  // Not needed when using 2FA code
+                        twoFactorCode: code,
+                    });
+
+                    // Backend sets httpOnly cookies; fetch user data
                     const userResp = await api.get('/users/me');
                     const userData = userResp.data.data ?? userResp.data;
                     setRoleCookie(userData.role ?? 'user');
+
                     set({
                         user: _mapUser(userData),
-                        isAuthenticated: true,
-                        isLoading: false,
-                        vendorCheckStatus: 'idle',
-                    });
-                } catch {
-                    set({ isAuthenticated: true, isLoading: false, vendorCheckStatus: 'idle' });
-                }
-            },
-
-            // ── 2FA ───────────────────────────────────────────────────────────
-            verify2FA: async (code) => {
-                const creds = getPendingCredentials();
-                if (!creds) {
-                    set({ error: 'Login session expired. Please try again.' });
-                    return false;
-                }
-                set({ isLoading: true, error: null });
-                try {
-                    const response = await api.post('/auth/login', {
-                        email: creds.email,
-                        password: creds.password,
-                        twoFactorCode: code,
-                    });
-                    const payload = response.data.data ?? response.data;
-                    const { token, refresh_token, user } = payload;
-                    setAccessToken(token);
-                    setRefreshToken(refresh_token);
-                    setAuthCookie();
-                    setRoleCookie(user.role ?? 'user');
-                    clearPendingCredentials();
-                    set({
-                        user: _mapUser(user),
                         vendor: null,
                         isAuthenticated: true,
                         isLoading: false,
@@ -258,7 +204,6 @@ export const useAuthStore = create<AuthState>()(
             register: async (data) => {
                 set({ isLoading: true, error: null });
                 try {
-                    // Use get() from closure — never reference useAuthStore.getState() inside actions
                     const { isAuthenticated } = get();
 
                     if (isAuthenticated) {
@@ -271,7 +216,6 @@ export const useAuthStore = create<AuthState>()(
                         if (vendorData) {
                             set({
                                 vendor: _mapVendor(vendorData as Record<string, unknown>),
-                                // Mark done so VendorLayout stops blocking and renders
                                 vendorCheckStatus: 'done',
                                 isLoading: false,
                             });
@@ -281,7 +225,7 @@ export const useAuthStore = create<AuthState>()(
                         return true;
                     }
 
-                    // Full registration: create user → get tokens → create vendor profile
+                    // Full registration: create user → backend sets httpOnly cookies → create vendor profile
                     const regResp = await api.post('/auth/register', {
                         email: data.email,
                         password: data.password,
@@ -291,10 +235,7 @@ export const useAuthStore = create<AuthState>()(
                     });
                     const payload = regResp.data.data ?? regResp.data;
 
-                    if (payload?.access_token) {
-                        setAccessToken(payload.access_token);
-                        if (payload.refresh_token) setRefreshToken(payload.refresh_token);
-                        setAuthCookie();
+                    if (payload?.user) {
                         setRoleCookie('vendor');
 
                         const vendorResp = await api.post('/vendors/register', {
@@ -326,9 +267,7 @@ export const useAuthStore = create<AuthState>()(
                 } catch {
                     // Always clear local state even if server call fails
                 } finally {
-                    clearTokens();
-                    clearAuthCookies();
-                    clearPendingCredentials();
+                    clearRoleCookie();
                     set({
                         user: null,
                         vendor: null,
@@ -337,6 +276,35 @@ export const useAuthStore = create<AuthState>()(
                         pendingEmail: null,
                         vendorCheckStatus: 'idle',
                     });
+                }
+            },
+
+            // ── Login with tokens (OAuth callback) ────────────────────────────
+            loginWithTokens: async (_token: string, _refreshToken: string) => {
+                set({ isLoading: true, error: null });
+                try {
+                    // Backend sets httpOnly cookies from the OAuth redirect
+                    // Fetch user data to complete the login
+                    const userResp = await api.get('/users/me');
+                    const userData = userResp.data.data ?? userResp.data;
+                    setRoleCookie(userData.role ?? 'user');
+
+                    set({
+                        user: _mapUser(userData),
+                        vendor: null,
+                        isAuthenticated: true,
+                        isLoading: false,
+                        requiresTwoFactor: false,
+                        pendingEmail: null,
+                        vendorCheckStatus: 'idle',
+                    });
+                } catch (error) {
+                    set({
+                        error: getApiError(error),
+                        isLoading: false,
+                        isAuthenticated: false,
+                    });
+                    throw error;
                 }
             },
 
@@ -354,19 +322,10 @@ export const useAuthStore = create<AuthState>()(
 
             /**
              * ensureVendorProfile — idempotent, concurrency-safe vendor check.
-             *
-             * Race condition prevention:
-             * - Guards on 'checking' status so concurrent calls (React StrictMode
-             *   double-invoke, fast navigation) never fire two parallel fetches.
-             * - Always re-fetches from backend on 'idle' — never trusts stale
-             *   localStorage vendor data as proof of a valid profile.
-             * - Sets 'done' in both success and error paths so the layout always
-             *   unblocks, even on network failure.
              */
             ensureVendorProfile: async () => {
                 const { isAuthenticated, vendorCheckStatus } = get();
 
-                // Guard: only one in-flight check at a time
                 if (vendorCheckStatus === 'checking' || vendorCheckStatus === 'done') return;
 
                 if (!isAuthenticated) {
@@ -374,7 +333,6 @@ export const useAuthStore = create<AuthState>()(
                     return;
                 }
 
-                // Atomically transition to 'checking' — prevents concurrent calls
                 set({ vendorCheckStatus: 'checking' });
 
                 try {
@@ -382,8 +340,6 @@ export const useAuthStore = create<AuthState>()(
                     const vendorData = response.data.data ?? response.data;
                     set({ vendor: _mapVendor(vendorData), vendorCheckStatus: 'done' });
                 } catch {
-                    // 404 = no vendor profile; any other error = treat as missing
-                    // Layout will redirect to /register?incomplete=1
                     set({ vendor: null, vendorCheckStatus: 'done' });
                 }
             },
@@ -406,7 +362,7 @@ export const useAuthStore = create<AuthState>()(
         {
             name: 'auth-storage',
             storage: createJSONStorage(() => localStorage),
-            // vendorCheckStatus is intentionally excluded — always re-verified on mount
+            // Only persist non-sensitive user/vendor state; no tokens
             partialize: (state) => ({
                 user: state.user,
                 vendor: state.vendor,

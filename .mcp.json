@@ -47,6 +47,18 @@
         "@modelcontextprotocol/server-sqlite"
       ],
       "disabled": true
+    },
+    "brevo": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.brevo.com/v1/brevo/mcp",
+        "--header",
+        "Authorization: Bearer ${BREVO_MCP_TOKEN}"
+      ],
+      "env": {},
+      "disabled": false
     }
   }
 }

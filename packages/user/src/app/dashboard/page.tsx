@@ -58,16 +58,16 @@ export default function DashboardPage() {
     const [emailVerified, setEmailVerified] = useState(true);
     const [resending, setResending] = useState(false);
 
+    // Check email verification status from API
     useEffect(() => {
-        try {
-            const stored = localStorage.getItem('userData');
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                if (parsed.emailVerified === false) {
+        api.get('/users/me')
+            .then((res) => {
+                const data = res.data?.data || res.data;
+                if (data && data.emailVerified === false) {
                     setEmailVerified(false);
                 }
-            }
-        } catch { }
+            })
+            .catch(() => {});
     }, []);
 
     const handleResendVerification = async () => {

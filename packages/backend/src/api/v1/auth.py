@@ -18,8 +18,8 @@ from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from secrets import token_urlsafe
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,6 +62,32 @@ users_router = APIRouter(prefix="/users", tags=["Users"])
 register_limiter = rate_limit_dependency(max_attempts=10, window_seconds=3600)   # 10/hour
 login_limiter = create_login_rate_limit_dependency(max_attempts=5, window_seconds=900)  # 5/15 min
 password_reset_limiter = rate_limit_dependency(max_attempts=5, window_seconds=3600)     # 5/hour
+
+# ── Cookie helpers ──────────────────────────────────────────────────────────
+def _set_auth_cookies(response: Response, tokens: dict) -> None:
+    """Set httpOnly auth cookies on a response."""
+    settings = get_settings()
+    response.set_cookie(
+        key="access_token",
+        value=tokens["access_token"],
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=tokens["expires_in"],
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens["refresh_token"],
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=settings.refresh_token_expire_days * 86400,
+    )
+
+def _clear_auth_cookies(response: Response) -> None:
+    """Clear httpOnly auth cookies."""
+    for key in ("access_token", "refresh_token"):
+        response.delete_cookie(key=key, samesite="lax")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -116,7 +142,10 @@ async def register(
     await otp_service.issue_otp(session, user.id, user.email, display_name)
 
     log.info("auth.register.success", user_id=str(user.id), email=user.email, ip=client_ip)
-    return tokens
+
+    response = JSONResponse(content=tokens)
+    _set_auth_cookies(response, tokens)
+    return response
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -236,7 +265,25 @@ async def login(
     await session.commit()
 
     log.info("auth.login.success", user_id=str(user.id), email=user.email, ip=client_ip)
-    return tokens
+
+    response = JSONResponse(content=tokens)
+    response.set_cookie(
+        key="access_token",
+        value=tokens["access_token"],
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=tokens["expires_in"],
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens["refresh_token"],
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=settings.refresh_token_expire_days * 86400,
+    )
+    return response
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -314,7 +361,8 @@ async def json_login(
     user_data = UserTokenData.model_validate(user)
 
     log.info("auth.json_login.success", user_id=str(user.id), email=user.email, ip=client_ip)
-    return LoginResponse(
+
+    response = LoginResponse(
         success=True,
         data={
             "token": tokens["access_token"],
@@ -323,6 +371,8 @@ async def json_login(
             "user": user_data.model_dump(),
         },
     )
+    _set_auth_cookies(response, tokens)
+    return response
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -362,15 +412,24 @@ async def me(
     summary="Rotate refresh token",
 )
 async def refresh_token(
-    body: RefreshTokenRequest,
+    request: Request,
     session: AsyncSession = Depends(get_session),
 ):
     """
     Exchange a valid refresh token for a new access + refresh token pair.
-    The old refresh token is immediately revoked (rotation).
+    Reads refresh token from httpOnly cookie. The old refresh token is immediately revoked (rotation).
     """
-    tokens = await auth_service.rotate_refresh_token(session, body.refresh_token)
-    return Token(**tokens)
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "AUTH_UNAUTHORIZED", "message": "No refresh token found"},
+        )
+    tokens = await auth_service.rotate_refresh_token(session, refresh_token)
+    response = Token(**tokens)
+    response_obj = JSONResponse(content=response.model_dump())
+    _set_auth_cookies(response_obj, tokens)
+    return response_obj
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -383,12 +442,16 @@ async def refresh_token(
     summary="Logout — revoke refresh token",
 )
 async def logout(
-    body: LogoutRequest,
+    request: Request,
     session: AsyncSession = Depends(get_session),
 ):
-    """Revoke the provided refresh token, ending the session."""
-    await auth_service.revoke_refresh_token(session, body.refresh_token)
-    return SuccessResponse(message="Logged out successfully")
+    """Revoke the refresh token from httpOnly cookie, ending the session."""
+    refresh_token = request.cookies.get("refresh_token")
+    if refresh_token:
+        await auth_service.revoke_refresh_token(session, refresh_token)
+    response = SuccessResponse(message="Logged out successfully")
+    _clear_auth_cookies(response)
+    return response
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -571,22 +634,15 @@ async def google_callback(
             status_code=status.HTTP_302_FOUND,
         )
 
-    # ── Success — redirect to the originating portal with tokens ──────────────
+    # ── Success — set httpOnly cookies and redirect ───────────────────────
     # Use frontend_origin from state JWT (set by the portal that initiated login)
     # so each portal (vendor:3000, admin:3002, user:3003) gets redirected correctly.
     origin = frontend_origin or settings.frontend_url
-    from urllib.parse import urlencode
-    params = urlencode({
-        "token": tokens["access_token"],
-        "refresh_token": tokens["refresh_token"],
-    })
-    # Redirect to the /auth/callback page (a public route) which stores
-    # the tokens in localStorage + cookie before navigating to a protected
-    # route.  Previously this redirected to {redirect_to} (e.g. /dashboard)
-    # directly, but the Next.js middleware blocks protected routes before
-    # the client-side JS has a chance to persist the tokens, causing 307
-    # redirect loops.
-    redirect_url = f"{origin}/auth/callback?{params}"
+
+    # Redirect to the /auth/callback page which will verify auth and redirect to dashboard
+    redirect_url = f"{origin}/auth/callback"
 
     log.info("google_oauth.callback.redirecting", redirect_to="/auth/callback", origin=origin)
-    return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
+    response = RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
+    _set_auth_cookies(response, tokens)
+    return response

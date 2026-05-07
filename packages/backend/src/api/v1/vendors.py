@@ -24,7 +24,7 @@ from ...services.vendor_dashboard_service import vendor_dashboard_service
 from ...services.vendor_availability_service import vendor_availability_service
 from ...services.vendor_api_key_service import vendor_api_key_service
 from ...schemas.vendor_api_key import VendorApiKeyCreate, VendorApiKeyRead, VendorApiKeyCreated
-from src.models.booking import Booking, BookingRead, BookingStatus
+from ...models.booking import Booking, BookingRead, BookingStatus
 import structlog
 
 log = structlog.get_logger()

@@ -24,42 +24,21 @@ export default function ProfilePage() {
     const [showPasswordSection, setShowPasswordSection] = useState(false);
 
     useEffect(() => {
-        const token = localStorage.getItem('userToken');
-        if (!token) {
-            router.push('/login');
-            return;
-        }
-
-        // Load user data from localStorage first, then try API
-        try {
-            const stored = localStorage.getItem('userData');
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                setUser({
-                    firstName: parsed.firstName || '',
-                    lastName: parsed.lastName || '',
-                    email: parsed.email || '',
-                    phone: parsed.phone || '',
-                });
-            }
-        } catch { }
-
-        // Try to fetch fresh data from API
+        // Fetch user data from API (httpOnly cookies handle auth)
         api.get('/users/me')
             .then((res) => {
-                const data = res.data?.user || res.data?.data || res.data;
+                const data = res.data?.data || res.data;
                 if (data) {
                     setUser({
-                        firstName: data.firstName || '',
-                        lastName: data.lastName || '',
+                        firstName: data.first_name || data.firstName || '',
+                        lastName: data.last_name || data.lastName || '',
                         email: data.email || '',
                         phone: data.phone || '',
                     });
-                    localStorage.setItem('userData', JSON.stringify(data));
                 }
             })
             .catch(() => {
-                // Use localStorage data as fallback
+                router.push('/login');
             })
             .finally(() => setLoading(false));
     }, [router]);
@@ -77,7 +56,6 @@ export default function ProfilePage() {
                 lastName: user.lastName,
                 phone: user.phone,
             });
-            localStorage.setItem('userData', JSON.stringify(user));
             toast.success('Profile updated!');
             setEditing(false);
         } catch (err: any) {
@@ -103,13 +81,13 @@ export default function ProfilePage() {
 
         setChangingPassword(true);
         try {
-            await api.put('/users/me/password', {
+            await api.patch('/users/me/password', {
                 currentPassword: passwordForm.currentPassword,
                 newPassword: passwordForm.newPassword,
             });
             toast.success('Password changed successfully!');
-            setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
             setShowPasswordSection(false);
+            setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
         } catch (err: any) {
             toast.error(err.response?.data?.message || 'Failed to change password');
         } finally {
@@ -119,168 +97,189 @@ export default function ProfilePage() {
 
     if (loading) {
         return (
-            <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-                <div className="h-8 w-40 animate-pulse rounded bg-gray-200" />
-                <div className="bg-white rounded-xl shadow-sm p-8 space-y-4">
-                    {[...Array(4)].map((_, i) => (
-                        <div key={i} className="space-y-2">
-                            <div className="h-3 w-20 animate-pulse rounded bg-gray-200" />
-                            <div className="h-10 w-full animate-pulse rounded-lg bg-gray-200" />
-                        </div>
-                    ))}
-                </div>
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
             </div>
         );
     }
 
     return (
-        <div className="max-w-2xl mx-auto px-4 py-8">
-            <h1 className="text-2xl font-bold text-gray-900 mb-6">My Profile</h1>
-
-            {/* Personal Info */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-6">
-                <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                        <User className="h-5 w-5 text-indigo-600" />
-                        Personal Information
-                    </h2>
-                    {!editing ? (
-                        <button
-                            onClick={() => setEditing(true)}
-                            className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-                        >
-                            Edit
-                        </button>
-                    ) : (
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setEditing(false)}
-                                className="text-sm text-gray-500 hover:text-gray-700"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                disabled={saving}
-                                className="text-sm bg-indigo-600 text-white px-3 py-1 rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-1"
-                            >
-                                {saving && <Loader2 className="h-3 w-3 animate-spin" />}
-                                Save
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                            <input
-                                type="text"
-                                value={user.firstName}
-                                onChange={(e) => setUser({ ...user, firstName: e.target.value })}
-                                disabled={!editing}
-                                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                            <input
-                                type="text"
-                                value={user.lastName}
-                                onChange={(e) => setUser({ ...user, lastName: e.target.value })}
-                                disabled={!editing}
-                                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            />
+        <div className="min-h-screen bg-gray-50 py-8">
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="bg-white shadow rounded-lg overflow-hidden">
+                    {/* Header */}
+                    <div className="bg-blue-600 px-6 py-4">
+                        <div className="flex items-center space-x-4">
+                            <div className="h-16 w-16 rounded-full bg-white flex items-center justify-center">
+                                <User className="h-8 w-8 text-blue-600" />
+                            </div>
+                            <div>
+                                <h1 className="text-2xl font-bold text-white">
+                                    {user.firstName} {user.lastName}
+                                </h1>
+                                <p className="text-blue-100">{user.email}</p>
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            <Mail className="inline h-4 w-4 mr-1" /> Email
-                        </label>
-                        <input
-                            type="email"
-                            value={user.email}
-                            disabled
-                            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm bg-gray-50 text-gray-500"
-                        />
-                        <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            <Phone className="inline h-4 w-4 mr-1" /> Phone
-                        </label>
-                        <input
-                            type="tel"
-                            value={user.phone}
-                            onChange={(e) => setUser({ ...user, phone: e.target.value })}
-                            disabled={!editing}
-                            placeholder="+92 300 1234567"
-                            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        />
-                    </div>
-                </div>
-            </div>
 
-            {/* Change Password */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <button
-                    onClick={() => setShowPasswordSection(!showPasswordSection)}
-                    className="flex items-center justify-between w-full"
-                >
-                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                        <Lock className="h-5 w-5 text-indigo-600" />
-                        Change Password
-                    </h2>
-                    <span className="text-sm text-indigo-600">{showPasswordSection ? 'Hide' : 'Show'}</span>
-                </button>
-
-                {showPasswordSection && (
-                    <div className="mt-6 space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
-                            <input
-                                type="password"
-                                value={passwordForm.currentPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
-                            <input
-                                type="password"
-                                value={passwordForm.newPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                                placeholder="Min 8 characters"
-                                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
-                            <input
-                                type="password"
-                                value={passwordForm.confirmPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            />
-                        </div>
-                        <button
-                            onClick={handlePasswordChange}
-                            disabled={changingPassword}
-                            className="w-full bg-indigo-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                            {changingPassword ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Changing...
-                                </>
-                            ) : (
-                                'Update Password'
+                    {/* Profile Info */}
+                    <div className="p-6 space-y-6">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-semibold text-gray-900">Profile Information</h2>
+                            {!editing && (
+                                <button
+                                    onClick={() => setEditing(true)}
+                                    className="text-sm text-blue-600 hover:text-blue-700"
+                                >
+                                    Edit Profile
+                                </button>
                             )}
-                        </button>
+                        </div>
+
+                        {editing ? (
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">First Name</label>
+                                        <input
+                                            type="text"
+                                            value={user.firstName}
+                                            onChange={(e) => setUser({ ...user, firstName: e.target.value })}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Last Name</label>
+                                        <input
+                                            type="text"
+                                            value={user.lastName}
+                                            onChange={(e) => setUser({ ...user, lastName: e.target.value })}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Phone</label>
+                                    <input
+                                        type="tel"
+                                        value={user.phone}
+                                        onChange={(e) => setUser({ ...user, phone: e.target.value })}
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div className="flex space-x-3">
+                                    <button
+                                        onClick={handleSave}
+                                        disabled={saving}
+                                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                                    >
+                                        {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                        Save Changes
+                                    </button>
+                                    <button
+                                        onClick={() => setEditing(false)}
+                                        className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="flex items-center space-x-3">
+                                    <User className="h-5 w-5 text-gray-400" />
+                                    <div>
+                                        <p className="text-sm text-gray-500">Full Name</p>
+                                        <p className="text-sm font-medium text-gray-900">
+                                            {user.firstName} {user.lastName}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-3">
+                                    <Mail className="h-5 w-5 text-gray-400" />
+                                    <div>
+                                        <p className="text-sm text-gray-500">Email</p>
+                                        <p className="text-sm font-medium text-gray-900">{user.email}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-3">
+                                    <Phone className="h-5 w-5 text-gray-400" />
+                                    <div>
+                                        <p className="text-sm text-gray-500">Phone</p>
+                                        <p className="text-sm font-medium text-gray-900">{user.phone || 'Not set'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Password Section */}
+                        <div className="border-t pt-6">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-lg font-semibold text-gray-900">Password</h2>
+                                {!showPasswordSection && (
+                                    <button
+                                        onClick={() => setShowPasswordSection(true)}
+                                        className="text-sm text-blue-600 hover:text-blue-700 flex items-center"
+                                    >
+                                        <Lock className="h-4 w-4 mr-1" />
+                                        Change Password
+                                    </button>
+                                )}
+                            </div>
+
+                            {showPasswordSection && (
+                                <div className="mt-4 space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Current Password</label>
+                                        <input
+                                            type="password"
+                                            value={passwordForm.currentPassword}
+                                            onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">New Password</label>
+                                        <input
+                                            type="password"
+                                            value={passwordForm.newPassword}
+                                            onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
+                                        <input
+                                            type="password"
+                                            value={passwordForm.confirmPassword}
+                                            onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div className="flex space-x-3">
+                                        <button
+                                            onClick={handlePasswordChange}
+                                            disabled={changingPassword}
+                                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                                        >
+                                            {changingPassword ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                            Change Password
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setShowPasswordSection(false);
+                                                setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                                            }}
+                                            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                )}
+                </div>
             </div>
         </div>
     );

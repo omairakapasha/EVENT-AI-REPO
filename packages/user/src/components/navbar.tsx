@@ -25,15 +25,18 @@ export function Navbar() {
     const userMenuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (typeof window !== "undefined") {
-            try {
-                const userData = localStorage.getItem("userData");
-                if (userData) {
-                    const parsed = JSON.parse(userData);
-                    setUserName(`${parsed.firstName || ""} ${parsed.lastName || ""}`.trim() || parsed.email || "User");
+        // Fetch user data from API since we use httpOnly cookies
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1"}/users/me`, {
+            credentials: "include",
+        })
+            .then(res => res.json())
+            .then(data => {
+                const user = data.data || data;
+                if (user) {
+                    setUserName(`${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email || "User");
                 }
-            } catch { setUserName(null); }
-        }
+            })
+            .catch(() => setUserName(null));
     }, []);
 
     useEffect(() => {
@@ -51,17 +54,25 @@ export function Navbar() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const handleLogout = () => {
-        localStorage.removeItem("userToken");
-        localStorage.removeItem("userData");
-        document.cookie = "userToken=; path=/; max-age=0; SameSite=Lax";
+    const handleLogout = async () => {
+        try {
+            await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1"}/auth/logout`, {
+                method: "POST",
+                credentials: "include",
+            });
+        } catch {}
         router.push("/login");
     };
 
     const [isLoggedIn, setIsLoggedIn] = useState(false);
 
     useEffect(() => {
-        setIsLoggedIn(!!localStorage.getItem("userToken"));
+        // Check auth status via API (httpOnly cookies)
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1"}/users/me`, {
+            credentials: "include",
+        })
+            .then(res => setIsLoggedIn(res.ok))
+            .catch(() => setIsLoggedIn(false));
     }, []);
 
     if (pathname === "/login" || pathname === "/signup" || pathname === "/register") return null;

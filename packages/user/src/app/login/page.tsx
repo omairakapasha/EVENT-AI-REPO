@@ -63,9 +63,7 @@ function LoginForm() {
                 throw new Error(data.error?.message || data.error || "Login failed");
             }
 
-            localStorage.setItem("userToken", data.data?.token || data.token);
-            localStorage.setItem("userData", JSON.stringify(data.data?.user || data.user));
-            document.cookie = `userToken=${data.data?.token || data.token}; path=/; max-age=604800; SameSite=Lax`;
+            // httpOnly cookies are set by the backend on login
             router.push("/dashboard");
         } catch (err: any) {
             setError(err.message || "Invalid email or password");
