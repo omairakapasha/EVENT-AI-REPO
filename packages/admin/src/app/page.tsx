@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
     Users, Store, TrendingUp, Activity,
@@ -13,14 +12,13 @@ import { getStats, getVendors, updateVendorStatus } from "@/lib/api";
 import toast from "react-hot-toast";
 
 export default function Dashboard() {
-    const { data: session, status } = useSession();
     const router = useRouter();
     const queryClient = useQueryClient();
     const [actionVendorId, setActionVendorId] = useState<string | null>(null);
 
     useEffect(() => {
-        if (status === "unauthenticated") router.push("/login");
-    }, [status, router]);
+        // Auth is handled by proxy.ts — if we're here, user is authenticated
+    }, [router]);
 
     const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
         queryKey: ["stats"],
@@ -48,7 +46,7 @@ export default function Dashboard() {
         },
     });
 
-    if (status === "loading" || status === "unauthenticated" || statsLoading || vendorsLoading) {
+    if (statsLoading || vendorsLoading) {
         return (
             <div className="space-y-6 animate-pulse">
                 <div className="h-8 w-48 rounded-xl bg-gray-200" />

@@ -85,7 +85,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         let eventSource: EventSource | null = null;
 
         const connectSSE = () => {
-            const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
             // Token is in httpOnly cookie, sent automatically via EventSource
             eventSource = new EventSource(`${API_URL}/sse/stream`);
 

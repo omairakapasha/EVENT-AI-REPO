@@ -1,9 +1,9 @@
 "use client";
 
-import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Zap, Mail, Lock, Loader2, AlertCircle, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import api, { getApiError } from "@/lib/api";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -17,13 +17,22 @@ export default function LoginPage() {
         e.preventDefault();
         setError("");
         setLoading(true);
-        const result = await signIn("credentials", { email, password, redirect: false });
-        setLoading(false);
-        if (result?.error) {
-            setError("Invalid credentials. Only admin accounts can access this portal.");
-        } else {
+        try {
+            const response = await api.post('/users/login', { email, password });
+            const user = response.data?.data?.user ?? response.data?.user;
+            if (user?.role !== 'admin') {
+                setError("Access denied. Only admin accounts can access this portal.");
+                // Log out immediately — backend set cookies but user isn't admin
+                await api.post('/auth/logout').catch(() => {});
+                setLoading(false);
+                return;
+            }
             router.push("/");
             router.refresh();
+        } catch (err) {
+            setError(getApiError(err) || "Invalid credentials. Only admin accounts can access this portal.");
+        } finally {
+            setLoading(false);
         }
     };
 

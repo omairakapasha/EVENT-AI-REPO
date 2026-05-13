@@ -8,11 +8,13 @@ import { useAuthStore } from '@/lib/auth-store';
 /**
  * Handles the post-OAuth redirect from the backend.
  *
- * Backend redirects to:
- *   {FRONTEND_URL}/auth/callback?token=<access_jwt>&refresh_token=<refresh_token>
+ * Backend sets httpOnly cookies (access_token, refresh_token) and redirects to:
+ *   {FRONTEND_URL}/auth/callback
  *
- * This page reads those params, stores the tokens, fetches /auth/me,
- * and redirects to /dashboard.
+ * No tokens in the URL — cookies are already set by the backend redirect.
+ * This page just fetches /users/me to hydrate the auth store, then goes to /dashboard.
+ *
+ * Error path: backend redirects to /login?error=<code> directly.
  */
 function CallbackHandler() {
     const router = useRouter();
@@ -24,10 +26,8 @@ function CallbackHandler() {
         if (handled.current) return;
         handled.current = true;
 
-        const token = searchParams.get('token');
-        const refreshToken = searchParams.get('refresh_token');
+        // Backend may still pass an error param if OAuth failed
         const error = searchParams.get('error');
-
         if (error) {
             const messages: Record<string, string> = {
                 google_auth_denied: 'Google sign-in was cancelled.',
@@ -40,13 +40,12 @@ function CallbackHandler() {
             return;
         }
 
-        if (!token || !refreshToken) {
-            router.replace('/login?error=Missing+authentication+tokens');
-            return;
-        }
-
-        loginWithTokens(token, refreshToken).then(() => {
+        // Cookies are already set by the backend — just hydrate the store
+        // loginWithTokens ignores the token params and calls /users/me directly
+        loginWithTokens('', '').then(() => {
             router.replace('/dashboard');
+        }).catch(() => {
+            router.replace('/login?error=Authentication+failed.+Please+try+again.');
         });
     }, [searchParams, loginWithTokens, router]);
 

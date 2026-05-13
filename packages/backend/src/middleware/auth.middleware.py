@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import Request, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import structlog
+from sqlalchemy import select
 
 from src.services.auth_service import auth_service
 from src.db.session import get_session
@@ -22,8 +23,12 @@ async def get_current_user(
     session: AsyncSession = Depends(get_session)
 ):
     """
-    Extract and verify JWT token from Authorization header.
+    Extract and verify JWT token from Authorization header or httpOnly cookie.
     Attaches user information to request state if valid.
+
+    Token resolution order:
+    1. Authorization: Bearer <token> header (API clients, Swagger UI)
+    2. access_token httpOnly cookie (browser portals)
 
     Args:
         request: FastAPI request object
@@ -33,14 +38,20 @@ async def get_current_user(
     Returns:
         User object if token valid, raises HTTPException otherwise
     """
-    if not credentials:
+    # Resolve token: prefer Bearer header, fall back to httpOnly cookie
+    token: Optional[str] = None
+    if credentials:
+        token = credentials.credentials
+    else:
+        token = request.cookies.get("access_token")
+
+    if not token:
         raise HTTPException(
             status_code=401,
-            detail="Not authenticated",
+            detail={"code": "AUTH_UNAUTHORIZED", "message": "Not authenticated"},
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    token = credentials.credentials
     try:
         # Verify and decode the access token
         payload = auth_service.verify_access_token(token)
@@ -49,7 +60,7 @@ async def get_current_user(
         if not user_id:
             raise HTTPException(
                 status_code=401,
-                detail="Invalid token payload",
+                detail={"code": "AUTH_UNAUTHORIZED", "message": "Invalid token payload"},
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -64,7 +75,7 @@ async def get_current_user(
             logger.warning("User not found for token", user_id=user_id)
             raise HTTPException(
                 status_code=401,
-                detail="User not found",
+                detail={"code": "AUTH_UNAUTHORIZED", "message": "User not found"},
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -72,7 +83,7 @@ async def get_current_user(
             logger.warning("Inactive user attempted access", user_id=user_id)
             raise HTTPException(
                 status_code=401,
-                detail="Inactive user",
+                detail={"code": "AUTH_UNAUTHORIZED", "message": "Inactive user"},
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -80,11 +91,13 @@ async def get_current_user(
         request.state.user = user
         return user
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.warning("Token verification failed", error=str(e))
         raise HTTPException(
             status_code=401,
-            detail="Could not validate credentials",
+            detail={"code": "AUTH_UNAUTHORIZED", "message": "Could not validate credentials"},
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -100,8 +113,11 @@ async def get_current_user_optional(
     when no or invalid token is provided.
 
     Useful for endpoints that work both with and without authentication.
+    Reads from Authorization header or httpOnly cookie.
     """
-    if not credentials:
+    # Check if there's any token available (header or cookie)
+    has_token = bool(credentials) or bool(request.cookies.get("access_token"))
+    if not has_token:
         return None
 
     try:

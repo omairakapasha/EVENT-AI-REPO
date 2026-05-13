@@ -67,11 +67,12 @@ password_reset_limiter = rate_limit_dependency(max_attempts=5, window_seconds=36
 def _set_auth_cookies(response: Response, tokens: dict) -> None:
     """Set httpOnly auth cookies on a response."""
     settings = get_settings()
+    is_production = settings.environment == "production"
     response.set_cookie(
         key="access_token",
         value=tokens["access_token"],
         httponly=True,
-        secure=True,
+        secure=is_production,
         samesite="lax",
         max_age=tokens["expires_in"],
     )
@@ -79,15 +80,17 @@ def _set_auth_cookies(response: Response, tokens: dict) -> None:
         key="refresh_token",
         value=tokens["refresh_token"],
         httponly=True,
-        secure=True,
+        secure=is_production,
         samesite="lax",
         max_age=settings.refresh_token_expire_days * 86400,
     )
 
 def _clear_auth_cookies(response: Response) -> None:
     """Clear httpOnly auth cookies."""
+    settings = get_settings()
+    is_production = settings.environment == "production"
     for key in ("access_token", "refresh_token"):
-        response.delete_cookie(key=key, samesite="lax")
+        response.delete_cookie(key=key, samesite="lax", secure=is_production)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -267,22 +270,7 @@ async def login(
     log.info("auth.login.success", user_id=str(user.id), email=user.email, ip=client_ip)
 
     response = JSONResponse(content=tokens)
-    response.set_cookie(
-        key="access_token",
-        value=tokens["access_token"],
-        httponly=True,
-        secure=True,
-        samesite="lax",
-        max_age=tokens["expires_in"],
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=tokens["refresh_token"],
-        httponly=True,
-        secure=True,
-        samesite="lax",
-        max_age=settings.refresh_token_expire_days * 86400,
-    )
+    _set_auth_cookies(response, tokens)
     return response
 
 
@@ -362,15 +350,15 @@ async def json_login(
 
     log.info("auth.json_login.success", user_id=str(user.id), email=user.email, ip=client_ip)
 
-    response = LoginResponse(
-        success=True,
-        data={
+    response = JSONResponse(content={
+        "success": True,
+        "data": {
             "token": tokens["access_token"],
             "refresh_token": tokens["refresh_token"],
             "expires_in": tokens["expires_in"],
-            "user": user_data.model_dump(),
+            "user": user_data.model_dump(mode="json"),
         },
-    )
+    })
     _set_auth_cookies(response, tokens)
     return response
 
@@ -399,6 +387,34 @@ async def me(
             detail={"code": "AUTH_CREDENTIALS_INVALID", "message": "User not found or inactive"},
         )
     return user
+
+
+@users_router.get(
+    "/me",
+    response_model=None,
+    summary="Get authenticated user profile (user portal)",
+)
+async def users_me(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+):
+    """Return the profile of the currently authenticated user (used by vendor/user portals).
+    Reads from httpOnly access_token cookie set by /users/login.
+    """
+    token = request.cookies.get("access_token")
+    if not token:
+        # Fall back to Authorization header
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "AUTH_UNAUTHORIZED", "message": "Not authenticated"},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user = await auth_service.verify_access_token(token, session)
+    return {"success": True, "data": UserTokenData.model_validate(user).model_dump(mode="json"), "meta": {}}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

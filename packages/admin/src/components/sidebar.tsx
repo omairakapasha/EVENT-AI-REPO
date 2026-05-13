@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
     LayoutDashboard, Users, Store, Settings, LogOut,
     CalendarCheck, Zap,
 } from "lucide-react";
-import { signOut } from "next-auth/react";
-import { cn } from "@repo/ui/lib/utils";
+import api from "@/lib/api";
 
 const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -19,6 +18,17 @@ const navigation = [
 
 export function Sidebar() {
     const pathname = usePathname();
+    const router = useRouter();
+
+    const handleLogout = async () => {
+        try {
+            await api.post('/auth/logout');
+        } catch {
+            // Always redirect even if server call fails
+        } finally {
+            router.push('/login');
+        }
+    };
 
     return (
         <aside className="flex h-full w-60 flex-col" style={{
@@ -92,7 +102,7 @@ export function Sidebar() {
             {/* Footer */}
             <div className="p-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                 <button
-                    onClick={() => signOut({ callbackUrl: "/login" })}
+                    onClick={handleLogout}
                     className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
                     style={{ color: "rgba(148,163,184,0.5)" }}
                     onMouseEnter={(e) => {

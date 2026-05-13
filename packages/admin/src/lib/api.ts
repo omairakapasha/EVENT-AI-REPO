@@ -1,35 +1,87 @@
-import axios from "axios";
-import { getSession, signOut } from "next-auth/react";
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
 
+// httpOnly cookies are sent automatically via withCredentials — no manual token handling
 export const api = axios.create({
     baseURL: API_URL,
     headers: {
         "Content-Type": "application/json",
     },
+    withCredentials: true,
 });
 
-// Attach JWT token from NextAuth session to every request
-api.interceptors.request.use(async (config) => {
-    const session = await getSession();
-    if (session && (session as any).accessToken) {
-        config.headers.Authorization = `Bearer ${(session as any).accessToken}`;
-    }
-    return config;
-});
+// Response interceptor — handle 401 via httpOnly cookie refresh
+let isRefreshing = false;
+let failedQueue: Array<{
+    resolve: (value: unknown) => void;
+    reject: (reason?: unknown) => void;
+}> = [];
 
-// Handle 401 errors — sign out and redirect to login
+const processQueue = (error: Error | null) => {
+    failedQueue.forEach((prom) => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(null);
+        }
+    });
+    failedQueue = [];
+};
+
 api.interceptors.response.use(
     (response) => response,
-    async (error) => {
-        if (error.response?.status === 401) {
-            // Session expired or token invalid — sign out
-            await signOut({ callbackUrl: "/login" });
+    async (error: AxiosError) => {
+        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+        if (originalRequest.url?.includes('/login')) {
+            return Promise.reject(error);
         }
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            if (isRefreshing) {
+                return new Promise((resolve, reject) => {
+                    failedQueue.push({ resolve, reject });
+                })
+                    .then(() => api(originalRequest))
+                    .catch((err) => Promise.reject(err));
+            }
+
+            originalRequest._retry = true;
+            isRefreshing = true;
+
+            try {
+                await api.post('/auth/refresh');
+                processQueue(null);
+                return api(originalRequest);
+            } catch (refreshError) {
+                processQueue(refreshError as Error);
+                if (typeof window !== 'undefined') {
+                    window.location.href = '/login';
+                }
+                return Promise.reject(refreshError);
+            } finally {
+                isRefreshing = false;
+            }
+        }
+
         return Promise.reject(error);
     }
 );
+
+export const getApiError = (error: unknown): string => {
+    if (axios.isAxiosError(error)) {
+        const data = error.response?.data;
+        if (data?.error?.message) return data.error.message;
+        if (data?.message) return data.message;
+        if (data?.detail) {
+            if (typeof data.detail === 'object') return data.detail.message ?? JSON.stringify(data.detail);
+            return data.detail;
+        }
+    }
+    if (error instanceof Error) return error.message;
+    return 'An unexpected error occurred';
+};
 
 export const getVendors = async (params?: { page?: number; limit?: number; status?: string; q?: string }) => {
     const response = await api.get("/admin/vendors", { params });
@@ -74,3 +126,5 @@ export const updateBookingStatus = async (id: string, status: "confirmed" | "rej
     const response = await api.patch(`/bookings/${id}/status`, { status, reason });
     return response.data;
 };
+
+export default api;

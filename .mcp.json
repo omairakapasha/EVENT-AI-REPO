@@ -30,7 +30,7 @@
       "command": "npx",
       "args": [
         "@modelcontextprotocol/server-filesystem",
-        "./"
+        "/home/ali/Desktop/Event-AI-Latest"
       ],
       "disabled": false
     },

@@ -145,7 +145,7 @@ async def update_vendor_status(
     if vendor is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="NOT_FOUND_VENDOR",
+            detail={"code": "NOT_FOUND_VENDOR", "message": "Vendor not found."},
         )
 
     new_status = body.status

@@ -1,42 +1,49 @@
-# ============================================
-# Event-AI Agentic Orchestrator Dockerfile (Multi-stage)
-# ============================================
+# ── Orchestrator — Python 3.12 / FastAPI / uv ────────────────────────────────
+# Base: python:3.12-slim (Debian slim ~50MB) — NOT alpine (uv needs glibc).
+# Multi-stage: builder installs deps into /app/.venv, runner copies only the venv.
+# syntax=docker/dockerfile:1
 
-# --- Stage 1: Build/Install ---
+# ── Stage 1: builder ─────────────────────────────────────────────────────────
 FROM python:3.12-slim AS builder
 
+# Copy uv binary from official image — no pip, no OS package install needed
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
 WORKDIR /app
 
-# Install build dependencies
-RUN pip install --no-cache-dir uv
-
-# Copy dependency files and install
+# Copy manifests first — layer cache: deps only reinstall when these change
 COPY pyproject.toml uv.lock* ./
-RUN uv pip install --system --no-cache -r pyproject.toml || pip install --no-cache-dir -e .
 
-# --- Stage 2: Production ---
+# Install production deps into /app/.venv using build cache mount
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
+
+# ── Stage 2: runner ───────────────────────────────────────────────────────────
 FROM python:3.12-slim AS runner
 
+# Non-root user
+RUN groupadd --system --gid 1001 appgroup \
+ && useradd  --system --uid 1001 --gid appgroup appuser
+
 WORKDIR /app
 
-# Create non-root user
-RUN groupadd --system --gid 1001 appgroup && \
-    useradd --system --uid 1001 --gid appgroup appuser
+# Copy only the virtualenv — no uv, no build tools in production image
+COPY --from=builder --chown=appuser:appgroup /app/.venv /app/.venv
 
-# Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+# Copy application source
+COPY --chown=appuser:appgroup . .
 
-# Copy application code
-COPY . .
+# Activate venv via PATH
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-# Switch to non-root user
 USER appuser
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD python -c \
+        "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
 
-# Start the FastAPI server (NOT chainlit)
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

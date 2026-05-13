@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import api, { getApiError } from './api';
 
 // ── Mappers ───────────────────────────────────────────────────────────────────
@@ -34,18 +33,6 @@ export function _mapVendor(v: Record<string, unknown>): Vendor {
         totalReviews: (v.total_reviews ?? v.totalReviews ?? 0) as number,
         categories: (v.categories ?? []) as CategoryRead[],
     };
-}
-
-// ── Cookie helpers (non-httpOnly, for client-side UX only) ───────────────────
-function setRoleCookie(role: string) {
-    if (typeof document !== 'undefined') {
-        document.cookie = `user-role=${role}; path=/; max-age=604800; SameSite=Lax`;
-    }
-}
-function clearRoleCookie() {
-    if (typeof document !== 'undefined') {
-        document.cookie = 'user-role=; path=/; max-age=0; SameSite=Lax';
-    }
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -108,6 +95,8 @@ interface AuthState {
     requiresTwoFactor: boolean;
     pendingEmail: string | null;
     vendorCheckStatus: 'idle' | 'checking' | 'done';
+    /** 'idle' → not started, 'loading' → in-flight, 'done' → resolved */
+    sessionStatus: 'idle' | 'loading' | 'done';
 
     login: (email: string, password: string) => Promise<boolean>;
     verify2FA: (code: string) => Promise<boolean>;
@@ -118,10 +107,11 @@ interface AuthState {
     updateVendorProfile: (data: Partial<Vendor>) => Promise<void>;
     loginWithTokens: (token: string, refreshToken: string) => Promise<void>;
     clearError: () => void;
+    /** Hydrate auth state from httpOnly cookies on page load. */
+    initSession: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
-    persist(
         (set, get) => ({
             user: null,
             vendor: null,
@@ -131,6 +121,7 @@ export const useAuthStore = create<AuthState>()(
             requiresTwoFactor: false,
             pendingEmail: null,
             vendorCheckStatus: 'idle' as const,
+            sessionStatus: 'idle' as const,
 
             // ── Login ─────────────────────────────────────────────────────────
             login: async (email, password) => {
@@ -146,7 +137,6 @@ export const useAuthStore = create<AuthState>()(
                     // Backend sets httpOnly cookies; fetch user data
                     const userResp = await api.get('/users/me');
                     const userData = userResp.data.data ?? userResp.data;
-                    setRoleCookie(userData.role ?? 'user');
 
                     set({
                         user: _mapUser(userData),
@@ -175,14 +165,13 @@ export const useAuthStore = create<AuthState>()(
                 try {
                     await api.post('/auth/login', {
                         email: pendingEmail,
-                        password: '',  // Not needed when using 2FA code
+                        password: '',
                         twoFactorCode: code,
                     });
 
                     // Backend sets httpOnly cookies; fetch user data
                     const userResp = await api.get('/users/me');
                     const userData = userResp.data.data ?? userResp.data;
-                    setRoleCookie(userData.role ?? 'user');
 
                     set({
                         user: _mapUser(userData),
@@ -236,8 +225,6 @@ export const useAuthStore = create<AuthState>()(
                     const payload = regResp.data.data ?? regResp.data;
 
                     if (payload?.user) {
-                        setRoleCookie('vendor');
-
                         const vendorResp = await api.post('/vendors/register', {
                             business_name: data.vendorName,
                             contact_email: data.contactEmail || data.email,
@@ -267,7 +254,6 @@ export const useAuthStore = create<AuthState>()(
                 } catch {
                     // Always clear local state even if server call fails
                 } finally {
-                    clearRoleCookie();
                     set({
                         user: null,
                         vendor: null,
@@ -275,19 +261,19 @@ export const useAuthStore = create<AuthState>()(
                         requiresTwoFactor: false,
                         pendingEmail: null,
                         vendorCheckStatus: 'idle',
+                        sessionStatus: 'idle',
                     });
                 }
             },
 
             // ── Login with tokens (OAuth callback) ────────────────────────────
+            // Token params are ignored — backend already set httpOnly cookies.
+            // We just fetch /users/me to hydrate the store.
             loginWithTokens: async (_token: string, _refreshToken: string) => {
                 set({ isLoading: true, error: null });
                 try {
-                    // Backend sets httpOnly cookies from the OAuth redirect
-                    // Fetch user data to complete the login
                     const userResp = await api.get('/users/me');
                     const userData = userResp.data.data ?? userResp.data;
-                    setRoleCookie(userData.role ?? 'user');
 
                     set({
                         user: _mapUser(userData),
@@ -358,18 +344,35 @@ export const useAuthStore = create<AuthState>()(
             },
 
             clearError: () => set({ error: null }),
-        }),
-        {
-            name: 'auth-storage',
-            storage: createJSONStorage(() => localStorage),
-            // Only persist non-sensitive user/vendor state; no tokens
-            partialize: (state) => ({
-                user: state.user,
-                vendor: state.vendor,
-                isAuthenticated: state.isAuthenticated,
-            }),
-        }
-    )
+
+            // ── Session hydration (called once on page load) ──────────────────
+            // Reads httpOnly cookies via /users/me to restore auth state
+            // without requiring the user to log in again.
+            initSession: async () => {
+                const { sessionStatus } = get();
+                if (sessionStatus === 'loading' || sessionStatus === 'done') return;
+
+                set({ sessionStatus: 'loading' });
+                try {
+                    const userResp = await api.get('/users/me');
+                    const userData = userResp.data.data ?? userResp.data;
+                    set({
+                        user: _mapUser(userData),
+                        isAuthenticated: true,
+                        sessionStatus: 'done',
+                        vendorCheckStatus: 'idle',
+                    });
+                } catch {
+                    // No valid session — stay unauthenticated
+                    set({
+                        user: null,
+                        isAuthenticated: false,
+                        sessionStatus: 'done',
+                        vendorCheckStatus: 'done',
+                    });
+                }
+            },
+        })
 );
 
 export default useAuthStore;

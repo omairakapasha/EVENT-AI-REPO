@@ -54,7 +54,7 @@ export default function RegisterPage() {
     const [step, setStep] = useState(1);
     const [showPassword, setShowPassword] = useState(false);
     const [success, setSuccess] = useState(false);
-    const { register: registerVendor, isLoading, error, clearError, isAuthenticated, logout } = useAuthStore();
+    const { register: registerVendor, isLoading, error, clearError, isAuthenticated, logout, initSession, sessionStatus } = useAuthStore();
 
     // If the user is already logged in and visits /register (not the recovery flow),
     // log them out first so they get a clean registration experience.
@@ -66,9 +66,29 @@ export default function RegisterPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // In recovery mode, hydrate the auth store from cookies so isAuthenticated is correct
+    useEffect(() => {
+        if (isIncomplete) {
+            initSession();
+        }
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     // In recovery mode, only business info fields are required
     const schema = isIncomplete
-        ? registerBaseSchema.partial({ firstName: true, lastName: true, email: true, password: true, confirmPassword: true })
+        ? z.object({
+            vendorName: z.string().min(2, 'Business name is required'),
+            businessType: z.string().optional(),
+            contactEmail: z.string().email('Invalid business email'),
+            phone: z.string().optional(),
+            website: z.string().url().optional().or(z.literal('')),
+            firstName: z.string().optional(),
+            lastName: z.string().optional(),
+            email: z.string().optional(),
+            password: z.string().optional(),
+            confirmPassword: z.string().optional(),
+        })
         : registerBaseSchema;
 
     const {
@@ -167,6 +187,15 @@ export default function RegisterPage() {
             }
         }
     };
+
+    // In recovery mode, show a spinner while the session is being hydrated
+    if (isIncomplete && sessionStatus !== 'done') {
+        return (
+            <div className="flex min-h-screen items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent" />
+            </div>
+        );
+    }
 
     if (success) {
         return (

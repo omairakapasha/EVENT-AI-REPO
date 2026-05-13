@@ -114,12 +114,15 @@ const VENDOR_CHECK_TIMEOUT = 15000; // 15 seconds timeout
 export function VendorLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
-    const { user, vendor, isAuthenticated, logout, ensureVendorProfile, vendorCheckStatus, error, clearError } = useAuthStore();
+    const { user, vendor, isAuthenticated, logout, ensureVendorProfile, vendorCheckStatus, error, clearError, sessionStatus, initSession } = useAuthStore();
     const [checkError, setCheckError] = useState<string | null>(null);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
     const isMountedRef = useRef(true);
+
+    // SSE — called unconditionally (rules of hooks). Only connects when vendor is ACTIVE.
+    const { reconnecting } = useSSE(isAuthenticated && vendorCheckStatus === 'done' && !!vendor && vendor.status === 'ACTIVE');
 
     // Cleanup on unmount
     useEffect(() => {
@@ -131,10 +134,25 @@ export function VendorLayout({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
-    // Kick off the vendor profile check once on mount with timeout protection
+    // Step 1: Hydrate auth state from cookies on first load
     useEffect(() => {
+        initSession();
+    }, [initSession]);
+
+    // Step 2: Once session is resolved, enforce auth + role guards and kick off vendor check
+    useEffect(() => {
+        if (sessionStatus !== 'done') return;
+
         if (!isAuthenticated) {
             router.replace('/login');
+            return;
+        }
+
+        // Role guard: only vendor accounts may access this portal (AUTH-05)
+        if (user && user.role !== 'vendor') {
+            logout().then(() => {
+                router.replace('/login?error=Access+denied.+This+portal+is+for+vendors+only.');
+            });
             return;
         }
 
@@ -156,7 +174,7 @@ export function VendorLayout({ children }: { children: React.ReactNode }) {
                 clearTimeout(timeoutRef.current);
             }
         };
-    }, [isAuthenticated, router, clearError]);
+    }, [sessionStatus, isAuthenticated, user, router, clearError, ensureVendorProfile]);
 
     // Once the check is done and there's no vendor, redirect to onboarding.
     useEffect(() => {
@@ -167,8 +185,73 @@ export function VendorLayout({ children }: { children: React.ReactNode }) {
         }
     }, [vendorCheckStatus, isAuthenticated, vendor, router, checkError]);
 
-    // SSE only after vendor is confirmed
-    const { reconnecting } = useSSE(isAuthenticated && vendorCheckStatus === 'done' && !!vendor);
+    // Block SUSPENDED / REJECTED vendors from accessing the dashboard (AUTH-05)
+    // They see a dedicated status screen instead of confusing 403 errors.
+    if (vendorCheckStatus === 'done' && vendor && (vendor.status === 'SUSPENDED' || vendor.status === 'REJECTED')) {
+        const isSuspended = vendor.status === 'SUSPENDED';
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-surface-50 dark:bg-surface-950 p-4">
+                <div className="max-w-md text-center">
+                    <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full ${isSuspended ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                        <AlertCircle className={`h-7 w-7 ${isSuspended ? 'text-orange-600 dark:text-orange-400' : 'text-red-600 dark:text-red-400'}`} />
+                    </div>
+                    <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-50 mb-2">
+                        {isSuspended ? 'Account Suspended' : 'Account Rejected'}
+                    </h2>
+                    <p className="text-surface-500 dark:text-surface-400 mb-2">
+                        {isSuspended
+                            ? 'Your vendor account has been suspended. You cannot access the portal at this time.'
+                            : 'Your vendor application was not approved.'}
+                    </p>
+                    <p className="text-sm text-surface-400 dark:text-surface-500 mb-6">
+                        Please contact support at{' '}
+                        <a href="mailto:support@event-ai.com" className="text-primary-600 hover:underline dark:text-primary-400">
+                            support@event-ai.com
+                        </a>{' '}
+                        for assistance.
+                    </p>
+                    <button
+                        onClick={() => logout().then(() => router.push('/login'))}
+                        className="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-100 dark:border-surface-700 dark:text-surface-300 dark:hover:bg-surface-800"
+                    >
+                        Sign Out
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // PENDING vendors — awaiting admin approval screen (AUTH-05)
+    if (vendorCheckStatus === 'done' && vendor && vendor.status === 'PENDING') {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-surface-50 dark:bg-surface-950 p-4">
+                <div className="max-w-md text-center">
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/30">
+                        <AlertCircle className="h-7 w-7 text-yellow-600 dark:text-yellow-400" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-50 mb-2">
+                        Awaiting Approval
+                    </h2>
+                    <p className="text-surface-500 dark:text-surface-400 mb-2">
+                        Your vendor application is under review. You&apos;ll receive an email once it&apos;s approved.
+                    </p>
+                    <p className="text-sm text-surface-400 dark:text-surface-500 mb-6">
+                        Questions? Contact{' '}
+                        <a href="mailto:support@event-ai.com" className="text-primary-600 hover:underline dark:text-primary-400">
+                            support@event-ai.com
+                        </a>
+                    </p>
+                    <button
+                        onClick={() => logout().then(() => router.push('/login'))}
+                        className="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-100 dark:border-surface-700 dark:text-surface-300 dark:hover:bg-surface-800"
+                    >
+                        Sign Out
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
 
     const handleLogoutClick = () => {
         setShowLogoutConfirm(true);
@@ -226,11 +309,13 @@ export function VendorLayout({ children }: { children: React.ReactNode }) {
     }
 
     // Block all rendering until the vendor check resolves.
-    if (vendorCheckStatus !== 'done') {
+    if (sessionStatus !== 'done' || vendorCheckStatus !== 'done') {
         return (
             <div className="flex min-h-screen items-center justify-center bg-surface-50 dark:bg-surface-950">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent" />
-                <span className="ml-3 text-surface-500">Loading vendor profile...</span>
+                <span className="ml-3 text-surface-500">
+                    {sessionStatus !== 'done' ? 'Initializing session...' : 'Loading vendor profile...'}
+                </span>
             </div>
         );
     }

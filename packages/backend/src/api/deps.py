@@ -1,8 +1,9 @@
 """
 Dependency injection helpers for API routes.
 """
+from typing import Optional
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,18 +13,39 @@ from src.services.event_bus_service import event_bus, EventBusService
 from src.models.user import User
 
 # OAuth2 scheme — token endpoint is /api/v1/auth/login
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
+# HTTPBearer for extracting Bearer token (auto_error=False so we can fall back to cookie)
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
     session: AsyncSession = Depends(get_session),
 ) -> User:
     """
-    FastAPI dependency that extracts JWT from Authorization header,
+    FastAPI dependency that extracts JWT from Authorization header or httpOnly cookie,
     validates it, and returns the authenticated User.
+
+    Token resolution order:
+    1. Authorization: Bearer <token> header (API clients, Swagger UI)
+    2. access_token httpOnly cookie (browser portals)
+
     Raises HTTPException(401) on failure.
     """
+    token: Optional[str] = None
+    if credentials:
+        token = credentials.credentials
+    else:
+        token = request.cookies.get("access_token")
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "AUTH_UNAUTHORIZED", "message": "Not authenticated"},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     return await auth_service.verify_access_token(token, session)
 
 

@@ -1,35 +1,23 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
-import { io, Socket } from "socket.io-client";
+/**
+ * SocketProvider — kept as a no-op stub.
+ *
+ * The backend uses Server-Sent Events (SSE) at /api/v1/sse/stream,
+ * not socket.io. Real-time updates are handled by NotificationProvider
+ * via EventSource. This provider exists only to avoid breaking imports.
+ */
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001";
+import { createContext, useContext } from "react";
 
-const SocketContext = createContext<Socket | null>(null);
+const SocketContext = createContext<null>(null);
 
-export const useSocket = () => {
-    return useContext(SocketContext);
-};
+export const useSocket = () => useContext(SocketContext);
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
-    const [socket, setSocket] = useState<Socket | null>(null);
-
-    useEffect(() => {
-        // Auth token is in httpOnly cookie; socket.io sends cookies automatically
-        const socketInstance = io(SOCKET_URL, {
-            autoConnect: false,
-            withCredentials: true,
-        });
-
-        socketInstance.connect();
-        setSocket(socketInstance);
-
-        return () => {
-            socketInstance.disconnect();
-        };
-    }, []);
-
     return (
-        <SocketContext.Provider value={socket}>{children}</SocketContext.Provider>
+        <SocketContext.Provider value={null}>
+            {children}
+        </SocketContext.Provider>
     );
 }

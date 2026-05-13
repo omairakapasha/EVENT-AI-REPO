@@ -9,8 +9,8 @@ services:
     restart: unless-stopped
     env_file: ./packages/backend/.env
     environment:
-      FRONTEND_URL: http://localhost:3001
-      CORS_ORIGINS: '["http://localhost:3001","http://localhost:3000"]'
+      FRONTEND_URL: http://localhost:3002
+      CORS_ORIGINS: '["http://localhost:3002","http://localhost:3003","http://localhost:3004","http://localhost:3000"]'
       GOOGLE_REDIRECT_URI: http://localhost:5000/api/v1/auth/google/callback
     ports:
       - "5000:5000"
@@ -34,10 +34,40 @@ services:
         reservations:
           cpus: "0.25"
           memory: 256M
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
+
+  # ── AI Orchestrator (Python / uv) ─────────────────────────────────────────
+  orchestrator:
+    build:
+      context: ./packages/agentic_event_orchestrator
+      dockerfile: Dockerfile
+    container_name: event-ai-orchestrator
+    restart: unless-stopped
+    env_file: ./packages/agentic_event_orchestrator/.env
+    ports:
+      - "8000:8000"
+    networks:
+      - public
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
 
   # ── Vendor Portal (Next.js) ────────────────────────────────────────────────
   vendor:
@@ -51,7 +81,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
     ports:
-      - "3001:3000"
+      - "3002:3000"
     networks:
       - public
     depends_on:
@@ -71,10 +101,72 @@ services:
         reservations:
           cpus: "0.1"
           memory: 128M
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
+
+  # ── User Portal (Next.js) ──────────────────────────────────────────────────
+  user:
+    build:
+      context: ./packages/user
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
+    container_name: event-ai-user
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
+    ports:
+      - "3003:3000"
+    networks:
+      - public
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  # ── Admin Portal (Next.js) ─────────────────────────────────────────────────
+  admin:
+    build:
+      context: ./packages/admin
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
+    container_name: event-ai-admin
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
+    ports:
+      - "3004:3000"
+    networks:
+      - public
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
 
 networks:
   public:

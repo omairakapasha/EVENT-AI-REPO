@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     seed_admin_email: Optional[str] = Field(default=None)
     seed_admin_password: Optional[str] = Field(default=None)
 
+    # Environment — controls cookie security and other dev/prod differences
+    environment: str = Field(default="development", description="Runtime environment: development | production")
+
     # SMTP / Email Settings
     smtp_host: Optional[str] = Field(default=None, description="SMTP server hostname")
     smtp_port: int = Field(default=587, description="SMTP server port")
@@ -53,6 +56,17 @@ class Settings(BaseSettings):
     smtp_user: Optional[str] = Field(default=None, description="SMTP authentication username")
     smtp_password: Optional[str] = Field(default=None, description="SMTP authentication password")
     email_from: str = Field(default="noreply@eventai.pk", description="Default sender email address")
+
+    # CDN (Cloudflare R2 / AWS S3)
+    cdn_provider: str = Field(default="r2", description="CDN provider: r2 or s3")
+    cdn_bucket_name: str = Field(default="event-ai-uploads", description="CDN bucket name")
+    cdn_public_url: Optional[str] = Field(default=None, description="CDN public base URL")
+    cdn_enabled: bool = Field(default=False, description="Enable CDN uploads")
+    cdn_endpoint_url: Optional[str] = Field(default=None, description="CDN S3-compatible endpoint URL")
+    cdn_access_key_id: Optional[str] = Field(default=None, description="CDN access key ID")
+    cdn_secret_access_key: Optional[str] = Field(default=None, description="CDN secret access key")
+    cdn_region: str = Field(default="auto", description="CDN region")
+    cdn_public_endpoint: Optional[str] = Field(default=None, description="CDN public endpoint for URL construction")
 
     # Gemini API
     gemini_api_key: Optional[str] = Field(default=None, description="Gemini API key for embedding and AI features")
