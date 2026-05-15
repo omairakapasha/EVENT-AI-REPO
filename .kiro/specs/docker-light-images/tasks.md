@@ -15,7 +15,7 @@ Dockerfiles in the project.
 
 ## Tasks
 
-- [ ] 1. Verify and finalise the backend Dockerfile
+- [x] 1. Verify and finalise the backend Dockerfile
   - Read `packages/backend/Dockerfile` and cross-check every line against Requirements
     1.1–1.6, 5.1–5.4, 7.1–7.2, 9.1, 9.4, and 10.1–10.2.
   - Confirm: 2-stage build (builder + runner), uv binary copied from
@@ -29,7 +29,7 @@ Dockerfiles in the project.
   - Fix any deviations found.
   - _Requirements: 1.1, 1.2, 1.4, 1.5, 1.6, 5.1, 5.2, 5.3, 7.1, 7.2, 9.1, 9.4, 10.1, 10.2_
 
-- [ ] 2. Verify and finalise the orchestrator Dockerfile
+- [x] 2. Verify and finalise the orchestrator Dockerfile
   - Read `packages/agentic_event_orchestrator/Dockerfile` and cross-check against
     Requirements 1.1–1.6, 2.1–2.3, 5.1–5.4, 7.1, 7.3, 9.1, 9.4, and 10.1–10.2.
   - Confirm: base image `python:3.12-slim`, CMD is exactly
@@ -41,7 +41,7 @@ Dockerfiles in the project.
   - Fix any deviations found.
   - _Requirements: 1.1, 1.2, 1.4, 1.5, 1.6, 2.1, 2.2, 2.3, 5.1, 5.2, 5.3, 7.1, 7.3, 9.1, 9.4, 10.1, 10.2_
 
-- [ ] 3. Verify and finalise the vendor Dockerfile
+- [x] 3. Verify and finalise the vendor Dockerfile
   - Read `packages/vendor/Dockerfile` and cross-check against Requirements 3.1–3.6,
     4.1, 5.1–5.4, 7.1, 7.4, 9.2, 9.3, and 10.1–10.2.
   - Confirm: 3-stage build (deps → builder → runner), `corepack enable && corepack
@@ -53,23 +53,23 @@ Dockerfiles in the project.
   - Fix any deviations found.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 4.1, 5.1, 5.2, 5.3, 7.1, 7.4, 9.2, 9.3, 10.1, 10.2_
 
-- [ ] 4. Verify and finalise the user Dockerfile
+- [x] 4. Verify and finalise the user Dockerfile
   - Read `packages/user/Dockerfile` and apply the same checklist as task 3.
   - Additionally confirm `NEXT_PUBLIC_API_URL` is accepted as a build ARG and baked into
     the builder ENV.
   - Fix any deviations found.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 4.1, 5.1, 5.2, 5.3, 7.1, 7.4, 9.2, 9.3, 10.1, 10.2_
 
-- [ ] 5. Verify and finalise the admin Dockerfile
+- [x] 5. Verify and finalise the admin Dockerfile
   - Read `packages/admin/Dockerfile` and apply the same checklist as task 3.
   - Fix any deviations found.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 4.1, 5.1, 5.2, 5.3, 7.1, 7.4, 9.2, 9.3, 10.1, 10.2_
 
-- [ ] 6. Checkpoint — Dockerfiles complete
+- [x] 6. Checkpoint — Dockerfiles complete
   - Ensure all five Dockerfiles pass a manual read-through against the checklist above.
     Ask the user if any ambiguity arises before proceeding.
 
-- [ ] 7. Verify and finalise the backend .dockerignore
+- [x] 7. Verify and finalise the backend .dockerignore
   - Read `packages/backend/.dockerignore` and confirm it excludes: `.env`, `.env.*`,
     `__pycache__/`, `*.pyc`, `*.pyo`, `.venv/`, `tests/`, `.git/`, `.vscode/`, `.idea/`,
     `*.log`, `.pytest_cache/`, `.coverage`, `htmlcov/`.
@@ -78,7 +78,7 @@ Dockerfiles in the project.
   - Fix any gaps.
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 8. Verify and finalise the orchestrator .dockerignore
+- [x] 8. Verify and finalise the orchestrator .dockerignore
   - Read `packages/agentic_event_orchestrator/.dockerignore` and confirm it excludes the
     same Python set as task 7 plus `.env.local` and `.env.*` (currently only `.env` and
     `.env.local` are present — `.env.*` glob is missing).
@@ -86,7 +86,7 @@ Dockerfiles in the project.
   - Fix any gaps.
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 9. Verify and finalise the Node service .dockerignore files
+- [x] 9. Verify and finalise the Node service .dockerignore files
   - Read `packages/vendor/.dockerignore`, `packages/user/.dockerignore`, and
     `packages/admin/.dockerignore`.
   - Confirm each excludes: `node_modules/`, `.next/`, `.env`, `.env.*`, `.env.local`,
@@ -97,7 +97,7 @@ Dockerfiles in the project.
   - Fix any gaps across all three files.
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 10. Verify and finalise next.config files for standalone output
+- [x] 10. Verify and finalise next.config files for standalone output
   - Read `packages/user/next.config.ts`, `packages/admin/next.config.ts`, and
     `packages/vendor/next.config.js`.
   - Confirm `output: 'standalone'` (or `"standalone"`) is present in all three.
@@ -108,7 +108,7 @@ Dockerfiles in the project.
   - Fix any gaps.
   - _Requirements: 4.1, 4.2, 4.3_
 
-- [ ] 11. Verify and finalise docker-compose.yml
+- [x] 11. Verify and finalise docker-compose.yml
   - Read `docker-compose.yml` and cross-check against Requirements 8.1–8.8.
   - Confirm: all five services present (`backend`, `orchestrator`, `vendor`, `user`,
     `admin`), port mappings 5000→5000, 8000→8000, 3002→3000, 3003→3000, 3004→3000,
@@ -119,11 +119,11 @@ Dockerfiles in the project.
   - Fix any deviations found.
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8_
 
-- [ ] 12. Checkpoint — Configuration artefacts complete
+- [x] 12. Checkpoint — Configuration artefacts complete
   - All Dockerfiles, .dockerignore files, next.config files, and docker-compose.yml are
     verified and patched. Ask the user if questions arise before proceeding to tests.
 
-- [ ] 13. Create the structural assertion test suite
+- [x] 13. Create the structural assertion test suite
   - Create `tests/docker/test_dockerfiles.py` at the repo root.
   - Set up pytest fixtures that read each Dockerfile as text and expose the runner-stage
     text separately from the full file text.
@@ -156,7 +156,7 @@ Dockerfiles in the project.
     and `packages/vendor/next.config.js`.
   - _Requirements: 1.1–1.6, 2.1–2.3, 3.1–3.6, 4.1, 5.1–5.4, 6.1–6.4, 7.1–7.4, 8.5–8.8, 9.1–9.4, 10.1–10.2_
 
-- [ ] 14. Create tests/docker/conftest.py with shared fixtures
+- [x] 14. Create tests/docker/conftest.py with shared fixtures
   - Create `tests/docker/__init__.py` (empty) and `tests/docker/conftest.py`.
   - Define a `SERVICES` constant mapping service name → package path and Dockerfile path.
   - Define a `dockerfile_text(service)` fixture that reads and returns the full Dockerfile
@@ -167,7 +167,7 @@ Dockerfiles in the project.
     returns the parsed dict.
   - _Requirements: (test infrastructure — supports all properties)_
 
-- [ ]* 15. Run the structural assertion test suite and fix failures
+- [x]* 15. Run the structural assertion test suite and fix failures
   - Run `uv run pytest tests/docker/ -v` from the repo root (requires `pyyaml` in the
     test environment — add to `packages/backend/pyproject.toml` dev dependencies if
     absent, or run from a standalone venv with `pip install pytest pyyaml`).

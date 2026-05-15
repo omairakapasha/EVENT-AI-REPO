@@ -72,8 +72,8 @@ services:
   # ── Vendor Portal (Next.js) ────────────────────────────────────────────────
   vendor:
     build:
-      context: ./packages/vendor
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: packages/vendor/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
     container_name: event-ai-vendor
@@ -105,8 +105,8 @@ services:
   # ── User Portal (Next.js) ──────────────────────────────────────────────────
   user:
     build:
-      context: ./packages/user
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: packages/user/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
     container_name: event-ai-user
@@ -138,8 +138,8 @@ services:
   # ── Admin Portal (Next.js) ─────────────────────────────────────────────────
   admin:
     build:
-      context: ./packages/admin
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: packages/admin/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
     container_name: event-ai-admin

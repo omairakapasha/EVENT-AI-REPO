@@ -2,10 +2,14 @@
 .venv/
 venv/
 __pycache__/
+*.pyc
+*.pyo
 
 # Environment files
 .env
+.env.*
 .env.local
+.env.*.local
 
 # Logs
 *.log
@@ -26,4 +30,10 @@ Thumbs.db
 *.md
 *.txt
 test_*.py
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+*.egg-info/
 .chainlit/

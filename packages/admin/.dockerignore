@@ -27,3 +27,12 @@ Thumbs.db
 *.txt
 coverage/
 __tests__/
+
+# Build cache
+.turbo/
+
+# Test files
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx

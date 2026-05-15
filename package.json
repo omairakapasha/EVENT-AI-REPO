@@ -17,10 +17,10 @@
         "db:migrate": "pnpm --filter @event-ai/backend run migrate:deploy",
         "db:migrate:dev": "pnpm --filter @event-ai/backend run migrate:dev",
         "db:studio": "pnpm --filter @event-ai/backend run studio",
-        "db:reset": "npm run db:down && npm run db:up && node -e \"setTimeout(()=>{},5000)\" && npm run db:migrate",
+        "db:reset": "pnpm run db:down && pnpm run db:up && node -e \"new Promise(r=>setTimeout(r,5000)).then(()=>process.exit(0))\" && pnpm run db:migrate",
         "db:reset:nodocker": "pnpm --filter @event-ai/backend run db:reset",
-        "setup": "pnpm install && npm run db:up && npm run db:migrate",
-        "setup:nodocker": "pnpm install && npm run db:migrate",
+        "setup": "pnpm install && pnpm run db:up && pnpm run db:migrate",
+        "setup:nodocker": "pnpm install && pnpm run db:migrate",
         "clean": "turbo run clean && rimraf node_modules",
         "typecheck": "turbo run typecheck"
     },

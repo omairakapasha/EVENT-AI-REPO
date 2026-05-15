@@ -24,7 +24,7 @@
       "args": [
         "@playwright/mcp@latest"
       ],
-      "disabled": true
+      "disabled": false
     },
     "filesystem": {
       "command": "npx",

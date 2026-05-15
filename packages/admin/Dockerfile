@@ -1,5 +1,5 @@
-# ── Admin Portal — Next.js / pnpm ────────────────────────────────────────────
-# Base: node:20-alpine (~50MB) — minimal, no full OS.
+# ── Admin Portal — Next.js / pnpm monorepo ───────────────────────────────────
+# Build context: repo root (docker-compose sets context: .)
 # Multi-stage: deps → builder → runner (standalone output only).
 # syntax=docker/dockerfile:1
 
@@ -7,8 +7,15 @@
 FROM node:20-alpine AS deps
 RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
-# Cache mount for pnpm store — speeds up repeated builds
+
+# Copy monorepo manifests first — layer cache: deps only reinstall when these change
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Copy workspace package manifests (needed for pnpm to resolve workspace deps)
+COPY packages/admin/package.json ./packages/admin/
+COPY packages/ui/package.json    ./packages/ui/
+
+# Install all workspace deps with cache mount
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 
@@ -16,13 +23,25 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
 FROM node:20-alpine AS builder
 RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+
+# Copy installed node_modules from deps stage
+COPY --from=deps /app/node_modules        ./node_modules
+COPY --from=deps /app/packages/admin/node_modules ./packages/admin/node_modules
+COPY --from=deps /app/packages/ui/node_modules    ./packages/ui/node_modules
+
+# Copy source for the packages we need
+COPY packages/admin/ ./packages/admin/
+COPY packages/ui/    ./packages/ui/
+
+# Copy root config files needed by Next.js build
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+
 # NEXT_PUBLIC_* vars are baked at build time
 ARG NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_TELEMETRY_DISABLED=1
-RUN pnpm run build
+
+RUN pnpm --filter @event-ai/admin run build
 
 # ── Stage 3: runner ───────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
@@ -37,9 +56,9 @@ ENV NODE_ENV=production \
     PORT=3000
 
 # Next.js standalone output — only what's needed to run (~30MB vs 300MB+)
-COPY --from=builder --chown=appuser:appgroup /app/.next/standalone ./
-COPY --from=builder --chown=appuser:appgroup /app/.next/static ./.next/static
-COPY --from=builder --chown=appuser:appgroup /app/public ./public
+COPY --from=builder --chown=appuser:appgroup /app/packages/admin/.next/standalone ./
+COPY --from=builder --chown=appuser:appgroup /app/packages/admin/.next/static     ./.next/static
+COPY --from=builder --chown=appuser:appgroup /app/packages/admin/public           ./public
 
 USER appuser
 EXPOSE 3000

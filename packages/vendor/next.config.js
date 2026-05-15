@@ -2,8 +2,9 @@
 const nextConfig = {
     output: 'standalone',
     reactStrictMode: true,
-    // Move dev cache to /tmp to avoid slow filesystem penalty on local drives
-    distDir: process.env.NODE_ENV === 'development' ? '/tmp/next-vendor' : '.next',
+    // Move dev cache out of the default .next to avoid conflicts with Docker build output.
+    // Uses a local .next-dev folder (works on Linux, macOS, and Windows).
+    distDir: process.env.NODE_ENV === 'development' ? '.next-dev' : '.next',
     images: {
         remotePatterns: [
             { protocol: 'http', hostname: 'localhost' },

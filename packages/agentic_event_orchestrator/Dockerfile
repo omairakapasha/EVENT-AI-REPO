@@ -12,7 +12,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 WORKDIR /app
 
 # Copy manifests first — layer cache: deps only reinstall when these change
-COPY pyproject.toml uv.lock* ./
+COPY pyproject.toml uv.lock ./
 
 # Install production deps into /app/.venv using build cache mount
 RUN --mount=type=cache,target=/root/.cache/uv \

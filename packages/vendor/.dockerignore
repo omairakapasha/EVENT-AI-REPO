@@ -1,13 +1,40 @@
+# Dependencies
 node_modules/
 .next/
+.next-dev/
 out/
+
+# Environment files
 .env
 .env.*
+.env.local
+.env.*.local
+
+# Logs
 *.log
+
+# IDE
 .vscode/
 .idea/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Git
 .git/
+.gitignore
+
+# Docs
 *.md
+
+# Build cache
+.turbo/
+
+# Test files
 coverage/
 __tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
