@@ -53,7 +53,9 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "/tmp/next-vendor/types/**/*.ts",
-    "/tmp/next-vendor/dev/types/**/*.ts"
+    "/tmp/next-vendor/dev/types/**/*.ts",
+    ".next-dev/types/**/*.ts",
+    ".next-dev/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

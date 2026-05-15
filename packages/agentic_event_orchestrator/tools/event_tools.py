@@ -15,7 +15,7 @@ async def get_user_events(user_id: str) -> str:
     """Get all events for the current user.
     Returns a JSON string with list of events."""
     try:
-        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:3001/api/v1")
+        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:5000/api/v1")
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.get(f"{backend_url}/events", params={"userId": user_id})
             if resp.status_code == 200:
@@ -41,7 +41,7 @@ async def create_event(
     event_type must be one of: wedding, birthday, corporate, mehndi, conference, party.
     Returns a JSON string with the created event ID and details."""
     try:
-        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:3001/api/v1")
+        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:5000/api/v1")
         prefs = [p.strip() for p in preferences.split(",") if p.strip()] if preferences else []
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.post(
@@ -71,7 +71,7 @@ async def get_event_details(event_id: str) -> str:
     """Get full details of a specific event including linked vendors and status.
     Returns a JSON string with complete event details."""
     try:
-        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:3001/api/v1")
+        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:5000/api/v1")
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.get(f"{backend_url}/events/{event_id}")
             if resp.status_code == 200:
@@ -87,7 +87,7 @@ async def update_event_status(event_id: str, status: str) -> str:
     status must be one of: draft, planning, quoted, approved, confirmed, completed, cancelled.
     Returns a JSON string with update result."""
     try:
-        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:3001/api/v1")
+        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:5000/api/v1")
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.patch(
                 f"{backend_url}/events/{event_id}/status",

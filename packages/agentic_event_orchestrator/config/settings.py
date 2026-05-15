@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-3-flash-preview"  # matches GEMINI_MODEL in .env
 
     # Backend API
-    backend_api_url: str = "http://localhost:3001/api/v1"
+    backend_api_url: str = "http://localhost:5000/api/v1"
 
     # Mem0
     mem0_api_key: str = ""
@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     ai_service_api_key: str = ""
 
     # CORS
-    cors_origins: str = "http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003"
+    cors_origins: str = "http://localhost:3000,http://localhost:3002,http://localhost:3003,http://localhost:3004"
 
     # Rate limiting
     rate_limit_per_minute: int = 30

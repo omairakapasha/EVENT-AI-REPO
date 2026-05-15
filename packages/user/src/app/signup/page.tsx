@@ -51,7 +51,7 @@ export default function SignupPage() {
     const [googleLoading, setGoogleLoading] = useState(false);
     const [success, setSuccess] = useState(false);
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
     const strength = getPasswordStrength(formData.password);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -30,7 +30,7 @@ async def search_vendors(
     """Search the vendor marketplace for vendors matching the given criteria.
     Returns a JSON string with a list of matching vendors including name, category, city, price range, and rating."""
     try:
-        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:3001/api/v1")
+        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:5000/api/v1")
         params = {
             "mode": "hybrid",
             "q": f"{event_type} {location}",
@@ -59,7 +59,7 @@ async def get_vendor_details(vendor_id: str) -> str:
     """Get detailed information about a specific vendor including services, pricing, and contact info.
     Returns a JSON string with full vendor profile."""
     try:
-        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:3001/api/v1")
+        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:5000/api/v1")
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.get(f"{backend_url}/public_vendors/{vendor_id}")
             if resp.status_code == 200:
@@ -78,7 +78,7 @@ async def get_vendor_recommendations(
     """Get curated vendor recommendations for an event based on type, location, and budget.
     Returns a JSON string with recommended vendors per category."""
     try:
-        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:3001/api/v1")
+        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:5000/api/v1")
         params = {
             "mode": "hybrid",
             "q": f"{event_type} vendors {location}",

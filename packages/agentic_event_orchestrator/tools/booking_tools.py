@@ -23,7 +23,7 @@ async def create_booking_request(
     IMPORTANT: Only call this AFTER showing the user a summary and receiving explicit confirmation.
     Returns a JSON string with booking_id and status."""
     try:
-        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:3001/api/v1")
+        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:5000/api/v1")
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.post(
                 f"{backend_url}/bookings",
@@ -57,7 +57,7 @@ async def get_my_bookings(user_id: str) -> str:
     """Get all bookings for the current user.
     Returns a JSON string with list of bookings including status and vendor details."""
     try:
-        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:3001/api/v1")
+        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:5000/api/v1")
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.get(f"{backend_url}/bookings", params={"userId": user_id})
             if resp.status_code == 200:
@@ -74,7 +74,7 @@ async def get_booking_details(booking_id: str) -> str:
     """Get full details of a specific booking including vendor info and status.
     Returns a JSON string with complete booking details."""
     try:
-        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:3001/api/v1")
+        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:5000/api/v1")
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.get(f"{backend_url}/bookings/{booking_id}")
             if resp.status_code == 200:
@@ -89,7 +89,7 @@ async def cancel_booking(booking_id: str, reason: str = "Cancelled by user") -> 
     """Cancel an existing booking. Only call after explicit user confirmation.
     Returns a JSON string with cancellation status."""
     try:
-        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:3001/api/v1")
+        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:5000/api/v1")
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.patch(
                 f"{backend_url}/bookings/{booking_id}/cancel",

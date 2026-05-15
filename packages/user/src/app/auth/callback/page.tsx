@@ -48,7 +48,7 @@ function CallbackHandler() {
         }
 
         // ── Verify auth via API (httpOnly cookies are sent automatically) ──
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1"}/users/me`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1"}/users/me`, {
             credentials: "include",
         })
             .then((res) => {

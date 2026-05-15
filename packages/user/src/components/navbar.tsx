@@ -26,7 +26,7 @@ export function Navbar() {
 
     useEffect(() => {
         // Fetch user data from API since we use httpOnly cookies
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1"}/users/me`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1"}/users/me`, {
             credentials: "include",
         })
             .then(res => res.json())
@@ -56,7 +56,7 @@ export function Navbar() {
 
     const handleLogout = async () => {
         try {
-            await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1"}/auth/logout`, {
+            await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1"}/auth/logout`, {
                 method: "POST",
                 credentials: "include",
             });
@@ -68,7 +68,7 @@ export function Navbar() {
 
     useEffect(() => {
         // Check auth status via API (httpOnly cookies)
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1"}/users/me`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1"}/users/me`, {
             credentials: "include",
         })
             .then(res => setIsLoggedIn(res.ok))
