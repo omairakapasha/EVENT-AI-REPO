@@ -18,6 +18,7 @@ class Settings(BaseSettings):
         ``connect_args={"ssl": "require"}`` instead.
         """
         url = self.app_database_url or self.database_url
+        url = url.strip("'\"")
         if url.startswith("postgresql://"):
             url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
         elif url.startswith("postgres://"):
@@ -34,7 +35,7 @@ class Settings(BaseSettings):
     @property
     def ssl_required(self) -> bool:
         """True when the original DB URL includes sslmode=require (or stricter)."""
-        url = self.app_database_url or self.database_url
+        url = (self.app_database_url or self.database_url).strip("'\"")
         return "sslmode=require" in url or "sslmode=verify" in url
 
     # Gemini / LLM

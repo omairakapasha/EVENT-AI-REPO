@@ -7,8 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
-    "openai-agents[litellm]",
-    "litellm",
+    "openai-agents",
     "openai",
     "httpx",
     "asyncpg>=0.31.0",

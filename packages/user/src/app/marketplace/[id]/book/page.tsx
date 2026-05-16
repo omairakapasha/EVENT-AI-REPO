@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Calendar, Users, FileText, Loader2, CheckCircle } from 'lucide-react';
 import { createBooking } from '@/lib/api';
 import toast from 'react-hot-toast';
 
-export default function BookingPage() {
+function BookingContent() {
     const params = useParams();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -177,3 +177,16 @@ export default function BookingPage() {
         </div>
     );
 }
+
+export default function BookingPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+            </div>
+        }>
+            <BookingContent />
+        </Suspense>
+    );
+}
+

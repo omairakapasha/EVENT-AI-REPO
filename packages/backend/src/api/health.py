@@ -1,10 +1,22 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
+# pyright: ignore [reportMissingImports]
 from src.config.database import get_session
 import time
 
 router = APIRouter(prefix="/health", tags=["Health"])
+
+
+@router.get("")
+async def health():
+    """
+    Lightweight health check — no DB required.
+
+    Used by Docker HEALTHCHECK and container startup probes.
+    Returns HTTP 200 immediately to signal the process is alive.
+    """
+    return {"success": True, "data": {"status": "ok"}, "meta": {}}
 
 
 @router.get("/db")

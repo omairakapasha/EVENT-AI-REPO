@@ -28,12 +28,12 @@ const quickActions = [
 export default function DashboardPage() {
     const { data: events, isLoading: eventsLoading } = useQuery({
         queryKey: ["events"],
-        queryFn: getUserEvents,
+        queryFn: () => getUserEvents(),
     });
 
     const { data: bookings, isLoading: bookingsLoading } = useQuery({
         queryKey: ["bookings"],
-        queryFn: getUserBookings,
+        queryFn: () => getUserBookings(),
     });
 
     // Compute stats dynamically from API data

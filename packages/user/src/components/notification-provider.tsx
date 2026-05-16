@@ -29,7 +29,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     // Fetch notifications using React Query — httpOnly cookies handle auth
     const { data } = useQuery({
         queryKey: ["notifications"],
-        queryFn: getUserNotifications,
+        queryFn: () => getUserNotifications(),
         refetchInterval: 60000, // Refetch every minute
         staleTime: 30000,
     });

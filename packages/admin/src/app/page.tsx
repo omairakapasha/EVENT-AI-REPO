@@ -22,13 +22,13 @@ export default function Dashboard() {
 
     const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
         queryKey: ["stats"],
-        queryFn: getStats,
+        queryFn: () => getStats(),
         staleTime: 60_000, // 60 seconds
     });
 
     const { data: recentVendors, isLoading: vendorsLoading } = useQuery({
         queryKey: ["recentVendors"],
-        queryFn: getVendors,
+        queryFn: () => getVendors(),
     });
 
     const statusMutation = useMutation({

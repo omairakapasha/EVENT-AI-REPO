@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
@@ -47,7 +47,7 @@ const businessTypes = [
     'Other',
 ];
 
-export default function RegisterPage() {
+function RegisterContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const isIncomplete = searchParams?.get('incomplete') === '1';
@@ -101,7 +101,7 @@ export default function RegisterPage() {
         clearErrors,
         setError: setFormError,
     } = useForm<RegisterForm>({
-        resolver: zodResolver(schema),
+        resolver: zodResolver(schema as any),
         defaultValues: {
             vendorName: '',
             businessType: '',
@@ -532,3 +532,16 @@ export default function RegisterPage() {
         </div>
     );
 }
+
+export default function RegisterPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex min-h-screen items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent" />
+            </div>
+        }>
+            <RegisterContent />
+        </Suspense>
+    );
+}
+

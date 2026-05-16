@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/omair/OneDrive/Desktop/Event/packages/vendor/src/app/dashboard/layout.tsx"],"sourcesContent":["import type { Metadata } from \"next\";\n\nexport const metadata: Metadata = {\n    title: \"Dashboard | Event-AI Vendor Portal\",\n    description: \"Manage your vendor dashboard, view bookings, services, and performance metrics on Event-AI.\",\n};\n\nexport default function DashboardLayout({ children }: { children: React.ReactNode }) {\n    return children;\n}\n"],"names":["metadata","title","description","DashboardLayout","children"],"mappings":";;;;;;AAEO,MAAMA,WAAqB;IAC9BC,OAAO;IACPC,aAAa;AACjB;AAEe,SAASC,gBAAgB,EAAEC,QAAQ,EAAiC;IAC/E,OAAOA;AACX"}}]
+}

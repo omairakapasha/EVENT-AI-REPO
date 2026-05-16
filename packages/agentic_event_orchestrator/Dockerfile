@@ -30,8 +30,16 @@ WORKDIR /app
 # Copy only the virtualenv — no uv, no build tools in production image
 COPY --from=builder --chown=appuser:appgroup /app/.venv /app/.venv
 
-# Copy application source
-COPY --chown=appuser:appgroup . .
+# Copy only production application source — no dev/test files in the image
+COPY --chown=appuser:appgroup main.py app.py server.py ./
+COPY --chown=appuser:appgroup config ./config
+COPY --chown=appuser:appgroup pipeline ./pipeline
+COPY --chown=appuser:appgroup routers ./routers
+COPY --chown=appuser:appgroup services ./services
+COPY --chown=appuser:appgroup tools ./tools
+COPY --chown=appuser:appgroup models ./models
+COPY --chown=appuser:appgroup database ./database
+COPY --chown=appuser:appgroup guardrails.py rate_limiter.py service_auth.py ./
 
 # Activate venv via PATH
 ENV PATH="/app/.venv/bin:$PATH" \

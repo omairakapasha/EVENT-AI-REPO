@@ -52,6 +52,7 @@ function LoginForm() {
             const response = await fetch(`${API_URL}/users/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({ email, password }),
             });
 
@@ -64,7 +65,8 @@ function LoginForm() {
             }
 
             // httpOnly cookies are set by the backend on login
-            router.push("/dashboard");
+            const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+            router.push(callbackUrl);
         } catch (err: any) {
             setError(err.message || "Invalid email or password");
             setLoading(false);

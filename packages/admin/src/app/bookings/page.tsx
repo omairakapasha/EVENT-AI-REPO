@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSession } from 'next-auth/react';
+import { useAdminAuth } from '@/lib/use-admin-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import {
@@ -20,7 +20,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function BookingsPage() {
-    const { data: session, status } = useSession();
+    const { status } = useAdminAuth();
     const router = useRouter();
     const queryClient = useQueryClient();
 

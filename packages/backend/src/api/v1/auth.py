@@ -68,12 +68,16 @@ def _set_auth_cookies(response: Response, tokens: dict) -> None:
     """Set httpOnly auth cookies on a response."""
     settings = get_settings()
     is_production = settings.environment == "production"
+    # In dev, set domain=localhost so cookies are shared across all localhost ports
+    # (backend:5000, vendor:3002, user:3003, admin:3004).
+    domain = None if is_production else "localhost"
     response.set_cookie(
         key="access_token",
         value=tokens["access_token"],
         httponly=True,
         secure=is_production,
         samesite="lax",
+        domain=domain,
         max_age=tokens["expires_in"],
     )
     response.set_cookie(
@@ -82,6 +86,7 @@ def _set_auth_cookies(response: Response, tokens: dict) -> None:
         httponly=True,
         secure=is_production,
         samesite="lax",
+        domain=domain,
         max_age=settings.refresh_token_expire_days * 86400,
     )
 
@@ -89,8 +94,9 @@ def _clear_auth_cookies(response: Response) -> None:
     """Clear httpOnly auth cookies."""
     settings = get_settings()
     is_production = settings.environment == "production"
+    domain = None if is_production else "localhost"
     for key in ("access_token", "refresh_token"):
-        response.delete_cookie(key=key, samesite="lax", secure=is_production)
+        response.delete_cookie(key=key, samesite="lax", secure=is_production, domain=domain)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

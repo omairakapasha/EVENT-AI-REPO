@@ -2,13 +2,13 @@
 
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSession } from "next-auth/react";
+import { useAdminAuth } from "@/lib/use-admin-auth";
 import { getCategories, createCategory, deleteCategory } from "@/lib/api";
 import { Save, Trash2, Plus, Loader2, Info, Tag } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function SettingsPage() {
-    const { data: session } = useSession();
+    const { user } = useAdminAuth();
     const queryClient = useQueryClient();
     const [newCategory, setNewCategory] = useState({
         name: "",
@@ -18,7 +18,7 @@ export default function SettingsPage() {
 
     const { data: categories, isLoading: categoriesLoading } = useQuery({
         queryKey: ["categories"],
-        queryFn: getCategories,
+        queryFn: () => getCategories(),
     });
 
     const createMutation = useMutation({
@@ -60,7 +60,7 @@ export default function SettingsPage() {
     };
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
-    const adminEmail = (session as any)?.user?.email || "—";
+    const adminEmail = user?.email || "—";
 
     return (
         <div className="space-y-6">

@@ -7,8 +7,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from agents import set_tracing_disabled
-from agents.extensions.models.litellm_model import LitellmModel
+from openai import AsyncOpenAI
+from agents import set_tracing_disabled, OpenAIChatCompletionsModel
 from agents.run import RunConfig
 
 from config.settings import get_settings
@@ -46,15 +46,17 @@ async def lifespan(app: FastAPI):
     # Shared HTTP client
     http_client = httpx.AsyncClient(timeout=30.0)
 
-    # Disable tracing — no OpenAI key, Gemini via LiteLLM
+    # Disable tracing — Gemini via OpenAI-compatible endpoint, no OpenAI key
     set_tracing_disabled(True)
 
-    # Model via LiteLLM — routes gemini/... to Google AI using GEMINI_API_KEY
-    import os
-    os.environ.setdefault("GEMINI_API_KEY", settings.gemini_api_key)
-    model = LitellmModel(
-        model=f"gemini/{settings.gemini_model}",
+    # Model via Gemini's OpenAI-compatible REST endpoint (no LiteLLM needed)
+    gemini_client = AsyncOpenAI(
         api_key=settings.gemini_api_key,
+        base_url=settings.gemini_base_url,
+    )
+    model = OpenAIChatCompletionsModel(
+        model=settings.gemini_model,
+        openai_client=gemini_client,
     )
     run_config = RunConfig(model=model)
 

@@ -19,7 +19,7 @@ const statusConfig: Record<string, { color: string; icon: any; label: string }> 
 export default function BookingsPage() {
     const { data, isLoading } = useQuery({
         queryKey: ['bookings'],
-        queryFn: getUserBookings,
+        queryFn: () => getUserBookings(),
     });
 
     const bookings = data?.bookings || data?.data || [];
