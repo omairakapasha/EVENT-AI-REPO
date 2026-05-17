@@ -5,7 +5,6 @@ from typing import Optional
 from fastapi import Request, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import structlog
-from sqlalchemy import select
 
 from src.services.auth_service import auth_service
 from src.db.session import get_session
@@ -53,39 +52,8 @@ async def get_current_user(
         )
 
     try:
-        # Verify and decode the access token
-        payload = auth_service.verify_access_token(token)
-        user_id = payload.get("sub")
-
-        if not user_id:
-            raise HTTPException(
-                status_code=401,
-                detail={"code": "AUTH_UNAUTHORIZED", "message": "Invalid token payload"},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        # Fetch user from database
-        from src.models import User
-        result = await session.execute(
-            select(User).where(User.id == user_id)
-        )
-        user = result.scalar_one_or_none()
-
-        if not user:
-            logger.warning("User not found for token", user_id=user_id)
-            raise HTTPException(
-                status_code=401,
-                detail={"code": "AUTH_UNAUTHORIZED", "message": "User not found"},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        if not user.is_active:
-            logger.warning("Inactive user attempted access", user_id=user_id)
-            raise HTTPException(
-                status_code=401,
-                detail={"code": "AUTH_UNAUTHORIZED", "message": "Inactive user"},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        # Verify token, fetch and validate user in one call
+        user = await auth_service.verify_access_token(token, session)
 
         # Attach user to request state for easy access in routes
         request.state.user = user

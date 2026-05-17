@@ -4,14 +4,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Brand palette CSS variables ──────────────────────────────────────────────
+   primary  → navy   #1A3D64
+   accent   → sage   #96A78D
+   canvas   → cream  #EFECE3
+   ─────────────────────────────────────────────────────────────────────────── */
 :root {
-    --toast-bg: #ffffff;
-    --toast-color: #18181b;
+    --color-primary:       #1a3d64;
+    --color-primary-light: #2260a0;
+    --color-accent:        #96a78d;
+    --color-accent-light:  #b3c3aa;
+    --color-canvas:        #efece3;
+    --color-canvas-dark:   #dedad0;
+
+    --toast-bg:    #ffffff;
+    --toast-color: #1e1c1a;
 }
 
 .dark {
-    --toast-bg: #27272a;
-    --toast-color: #fafafa;
+    --toast-bg:    #363330;
+    --toast-color: #f2f0ea;
 }
 
 @layer base {
@@ -20,53 +32,92 @@
     }
 
     body {
-        @apply bg-surface-50 text-surface-900 antialiased dark:bg-surface-950 dark:text-surface-50;
+        @apply bg-canvas-100 text-surface-900 antialiased dark:bg-surface-950 dark:text-surface-50;
+    }
+
+    /* Headings inherit navy */
+    h1, h2, h3, h4, h5, h6 {
+        @apply text-primary-600 dark:text-primary-200;
     }
 }
 
 @layer components {
+    /* ── Buttons ─────────────────────────────────────────────────── */
     .btn {
-        @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+        @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium
+               transition-all duration-200 focus:outline-none
+               focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2
+               disabled:pointer-events-none disabled:opacity-50;
     }
 
+    /* Navy CTA */
     .btn-primary {
-        @apply btn bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800 shadow-sm hover:shadow-md;
+        @apply btn bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800
+               shadow-sm hover:shadow-md;
+    }
+
+    /* Sage accent */
+    .btn-accent {
+        @apply btn bg-accent-400 text-white hover:bg-accent-500 active:bg-accent-600
+               shadow-sm hover:shadow-md;
     }
 
     .btn-secondary {
-        @apply btn bg-surface-100 text-surface-900 hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-100 dark:hover:bg-surface-700;
+        @apply btn bg-surface-100 text-surface-900 hover:bg-surface-200
+               dark:bg-surface-800 dark:text-surface-100 dark:hover:bg-surface-700;
     }
 
     .btn-outline {
-        @apply btn border-2 border-surface-300 bg-transparent hover:bg-surface-100 dark:border-surface-600 dark:hover:bg-surface-800;
+        @apply btn border-2 border-primary-300 bg-transparent text-primary-600
+               hover:bg-primary-50 dark:border-primary-700 dark:text-primary-300
+               dark:hover:bg-primary-950;
     }
 
     .btn-ghost {
-        @apply btn bg-transparent hover:bg-surface-100 dark:hover:bg-surface-800;
+        @apply btn bg-transparent hover:bg-canvas-100 dark:hover:bg-surface-800;
     }
 
     .btn-danger {
         @apply btn bg-error-500 text-white hover:bg-error-600;
     }
 
+    /* ── Inputs ──────────────────────────────────────────────────── */
     .input {
-        @apply w-full rounded-lg border border-surface-300 bg-white px-4 py-2.5 text-sm text-surface-900 placeholder-surface-400 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-100 dark:placeholder-surface-500;
+        @apply w-full rounded-lg border border-surface-300 bg-white px-4 py-2.5 text-sm
+               text-surface-900 placeholder-surface-400 transition-all duration-200
+               focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20
+               dark:border-surface-700 dark:bg-surface-900 dark:text-surface-100
+               dark:placeholder-surface-500;
     }
 
     .input-error {
         @apply border-error-500 focus:border-error-500 focus:ring-error-500/20;
     }
 
+    /* ── Cards ───────────────────────────────────────────────────── */
     .card {
-        @apply rounded-xl border border-surface-200 bg-white p-6 shadow-sm dark:border-surface-800 dark:bg-surface-900;
+        @apply rounded-xl border border-canvas-200 bg-white p-6 shadow-sm
+               dark:border-surface-800 dark:bg-surface-900;
     }
 
+    /* Cream-tinted card for hero/feature areas */
+    .card-canvas {
+        @apply rounded-xl border border-canvas-200 bg-canvas-50 p-6 shadow-sm
+               dark:border-surface-800 dark:bg-surface-900;
+    }
+
+    /* ── Badges ──────────────────────────────────────────────────── */
     .badge {
         @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
     }
 
     .badge-primary {
         @apply badge bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300;
+    }
+
+    /* Sage accent badge */
+    .badge-accent {
+        @apply badge bg-accent-100 text-accent-700 dark:bg-accent-900 dark:text-accent-300;
     }
 
     .badge-success {
@@ -79,5 +130,16 @@
 
     .badge-error {
         @apply badge bg-error-100 text-error-700 dark:bg-error-900 dark:text-error-300;
+    }
+
+    /* ── Sidebar / nav highlight ─────────────────────────────────── */
+    .nav-item-active {
+        @apply bg-primary-50 text-primary-700 font-semibold
+               dark:bg-primary-950 dark:text-primary-300;
+    }
+
+    .nav-item {
+        @apply text-surface-600 hover:bg-canvas-100 hover:text-primary-600
+               dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-primary-300;
     }
 }

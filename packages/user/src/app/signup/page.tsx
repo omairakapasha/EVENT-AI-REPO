@@ -71,21 +71,20 @@ export default function SignupPage() {
             setError("Passwords do not match");
             return;
         }
-        if (formData.password.length < 8) {
-            setError("Password must be at least 8 characters");
+        if (formData.password.length < 12) {
+            setError("Password must be at least 12 characters");
             return;
         }
 
         setIsLoading(true);
         try {
-            const response = await fetch(`${API_URL}/users/register`, {
+            const response = await fetch(`${API_URL}/auth/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    firstName: formData.firstName,
-                    lastName: formData.lastName,
+                    first_name: formData.firstName,
+                    last_name: formData.lastName,
                     email: formData.email,
-                    phone: formData.phone || undefined,
                     password: formData.password,
                 }),
             });
@@ -319,7 +318,7 @@ export default function SignupPage() {
                                         required
                                         value={formData.password}
                                         onChange={handleChange}
-                                        placeholder="Min 8 characters"
+                                        placeholder="Min 12 characters"
                                         className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 pr-11 text-sm shadow-sm placeholder:text-gray-400 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-150"
                                     />
                                     <button

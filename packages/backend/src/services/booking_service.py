@@ -15,6 +15,11 @@ from src.models.service import Service
 from src.models.availability import VendorAvailability, AvailabilityStatus
 from src.services.event_bus_service import event_bus
 import structlog
+from sqlalchemy.exc import IntegrityError, InvalidRequestError
+try:
+    import asyncpg.exceptions as asyncpg_exc
+except ImportError:
+    asyncpg_exc = None  # SQLite test environment — FOR UPDATE not supported
 
 logger = structlog.get_logger()
 
@@ -75,6 +80,25 @@ class BookingService:
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def _get_availability_row_for_update(
+        self,
+        session: AsyncSession,
+        vendor_id: uuid.UUID,
+        service_id: uuid.UUID,
+        check_date: date_type,
+    ) -> Optional[VendorAvailability]:
+        stmt = (
+            select(VendorAvailability)
+            .where(
+                VendorAvailability.vendor_id == vendor_id,
+                VendorAvailability.service_id == service_id,
+                VendorAvailability.date == check_date,
+            )
+            .with_for_update(nowait=True)
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def _acquire_lock(
         self,
         session: AsyncSession,
@@ -84,8 +108,19 @@ class BookingService:
         user_id: uuid.UUID,
     ) -> VendorAvailability:
         """Acquire availability lock. Raises 409 if already booked/locked."""
-        row = await self._get_availability_row(session, vendor_id, service_id, check_date)
         now = datetime.now(timezone.utc)
+        try:
+            row = await self._get_availability_row_for_update(
+                session, vendor_id, service_id, check_date
+            )
+        except Exception as exc:
+            if asyncpg_exc and isinstance(exc.__cause__, asyncpg_exc.LockNotAvailableError):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=_err("CONFLICT_DATE_BEING_PROCESSED",
+                                "This date is temporarily held by another request."),
+                )
+            raise
 
         if row is not None:
             if row.status == AvailabilityStatus.BOOKED:
@@ -120,6 +155,16 @@ class BookingService:
                 locked_reason="booking_in_progress",
             )
             session.add(row)
+            try:
+                await session.flush()
+            except (IntegrityError, InvalidRequestError):
+                await session.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=_err("CONFLICT_DATE_BEING_PROCESSED",
+                                "This date is temporarily held by another request."),
+                )
+            return row
 
         await session.flush()
         return row

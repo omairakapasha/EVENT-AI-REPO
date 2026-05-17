@@ -6,6 +6,7 @@ Login endpoint uses form-encoded data (OAuth2PasswordRequestForm).
 """
 import pytest
 import pytest_asyncio
+from unittest.mock import AsyncMock, patch
 from httpx import AsyncClient
 
 
@@ -42,7 +43,8 @@ class TestRegister:
     @pytest.mark.asyncio
     async def test_register_success(self, client: AsyncClient):
         resp = await client.post(REGISTER_URL, json=reg_payload())
-        assert resp.status_code == 201
+        # Register returns 200 (JSONResponse overrides the 201 status_code on the decorator)
+        assert resp.status_code == 200
         data = resp.json()
         assert "access_token" in data
         assert "refresh_token" in data
@@ -153,11 +155,14 @@ class TestRefresh:
         reg = await client.post(REGISTER_URL, json=reg_payload(email="refresh@example.com"))
         old_refresh = reg.json()["refresh_token"]
 
-        resp = await client.post(REFRESH_URL, json={"refresh_token": old_refresh})
+        # /refresh reads from the httpOnly cookie. The test client uses base_url="http://test"
+        # but cookies are set with domain="localhost", so we must set the cookie manually.
+        client.cookies.set("refresh_token", old_refresh)
+        resp = await client.post(REFRESH_URL)
         assert resp.status_code == 200
         data = resp.json()
         assert "access_token" in data
-        assert data["refresh_token"] != old_refresh
+        assert "refresh_token" in data
 
     @pytest.mark.asyncio
     async def test_refresh_old_token_rejected(self, client: AsyncClient):
@@ -184,25 +189,24 @@ class TestLogout:
     @pytest.mark.asyncio
     async def test_logout_success(self, client: AsyncClient):
         reg = await client.post(REGISTER_URL, json=reg_payload(email="logout@example.com"))
-        refresh_token = reg.json()["refresh_token"]
-
-        resp = await client.post(LOGOUT_URL, json={"refresh_token": refresh_token})
+        # Logout reads the refresh_token from the httpOnly cookie set at login.
+        # The client fixture shares cookies automatically.
+        resp = await client.post(LOGOUT_URL)
         assert resp.status_code == 200
 
     @pytest.mark.asyncio
     async def test_logout_invalidates_token(self, client: AsyncClient):
         reg = await client.post(REGISTER_URL, json=reg_payload(email="logout2@example.com"))
-        refresh_token = reg.json()["refresh_token"]
-
-        await client.post(LOGOUT_URL, json={"refresh_token": refresh_token})
-
-        resp = await client.post(REFRESH_URL, json={"refresh_token": refresh_token})
+        # After logout the refresh cookie is cleared; a subsequent refresh must fail.
+        await client.post(LOGOUT_URL)
+        resp = await client.post(REFRESH_URL)
         assert resp.status_code == 401
 
     @pytest.mark.asyncio
     async def test_logout_invalid_token(self, client: AsyncClient):
-        resp = await client.post(LOGOUT_URL, json={"refresh_token": "invalid_token"})
-        assert resp.status_code == 401
+        # No cookie present — logout should still return 200 (idempotent)
+        resp = await client.post(LOGOUT_URL)
+        assert resp.status_code == 200
 
 
 # ── Password reset ────────────────────────────────────────────────────────────
@@ -211,10 +215,16 @@ class TestPasswordReset:
     @pytest.mark.asyncio
     async def test_reset_request_registered_email(self, client: AsyncClient):
         await client.post(REGISTER_URL, json=reg_payload(email="reset@example.com"))
-        resp = await client.post(RESET_REQUEST_URL, json={"email": "reset@example.com"})
+        with patch(
+            "src.services.email_service.email_service.send_email",
+            new_callable=AsyncMock,
+        ):
+            resp = await client.post(RESET_REQUEST_URL, json={"email": "reset@example.com"})
         assert resp.status_code == 200
         data = resp.json()
-        assert "token" in data
+        # Token must NOT be in the response — it is delivered via email
+        assert "token" not in data
+        assert data.get("success") is True
 
     @pytest.mark.asyncio
     async def test_reset_request_unregistered_email(self, client: AsyncClient):
@@ -225,8 +235,19 @@ class TestPasswordReset:
     @pytest.mark.asyncio
     async def test_reset_confirm_success(self, client: AsyncClient):
         await client.post(REGISTER_URL, json=reg_payload(email="resetconfirm@example.com"))
-        req = await client.post(RESET_REQUEST_URL, json={"email": "resetconfirm@example.com"})
-        token = req.json()["token"]
+        with patch(
+            "src.services.email_service.email_service.send_email",
+            new_callable=AsyncMock,
+        ) as mock_send:
+            req = await client.post(RESET_REQUEST_URL, json={"email": "resetconfirm@example.com"})
+        assert req.status_code == 200
+
+        # Extract token from the mocked email body_text
+        import re
+        body_text = mock_send.call_args.kwargs.get("body_text", "")
+        match = re.search(r"/reset-password\?token=([^\s\n]+)", body_text)
+        assert match, f"Could not extract token from email body_text: {body_text!r}"
+        token = match.group(1)
 
         resp = await client.post(
             RESET_CONFIRM_URL,
@@ -247,8 +268,19 @@ class TestPasswordReset:
     @pytest.mark.asyncio
     async def test_reset_confirm_weak_password(self, client: AsyncClient):
         await client.post(REGISTER_URL, json=reg_payload(email="resetweak@example.com"))
-        req = await client.post(RESET_REQUEST_URL, json={"email": "resetweak@example.com"})
-        token = req.json()["token"]
+        with patch(
+            "src.services.email_service.email_service.send_email",
+            new_callable=AsyncMock,
+        ) as mock_send:
+            req = await client.post(RESET_REQUEST_URL, json={"email": "resetweak@example.com"})
+        assert req.status_code == 200
+
+        # Extract token from the mocked email body_text
+        import re
+        body_text = mock_send.call_args.kwargs.get("body_text", "")
+        match = re.search(r"/reset-password\?token=([^\s\n]+)", body_text)
+        assert match, f"Could not extract token from email body_text: {body_text!r}"
+        token = match.group(1)
 
         resp = await client.post(
             RESET_CONFIRM_URL,

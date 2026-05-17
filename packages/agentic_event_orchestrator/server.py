@@ -103,7 +103,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Cache-Control"] = "no-store"
+        # SSE streams set their own Cache-Control: no-cache — don't overwrite them.
+        content_type = response.headers.get("content-type", "")
+        if "text/event-stream" not in content_type:
+            response.headers["Cache-Control"] = "no-store"
         return response
 
 app.add_middleware(SecurityHeadersMiddleware)

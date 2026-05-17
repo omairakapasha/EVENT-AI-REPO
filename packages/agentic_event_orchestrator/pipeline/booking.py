@@ -2,7 +2,7 @@
 from agents import Agent
 from pipeline.instructions import BOOKING_INSTRUCTIONS
 from services.guardrail_hooks import tool_injection_guard, tool_pii_redact
-from tools import get_my_bookings, get_booking_details, cancel_booking
+from tools import get_my_bookings, get_booking_details, cancel_booking, get_vendor_services
 from tools.booking_tools import create_booking_request as _create_booking_request
 from _agents_sdk import function_tool
 
@@ -37,5 +37,5 @@ def build_booking_agent(model):
         name="BookingAgent",
         model=model,
         instructions=BOOKING_INSTRUCTIONS,
-        tools=[create_booking_request, get_my_bookings, get_booking_details, cancel_booking],
+        tools=[create_booking_request, get_my_bookings, get_booking_details, cancel_booking, get_vendor_services],
     )

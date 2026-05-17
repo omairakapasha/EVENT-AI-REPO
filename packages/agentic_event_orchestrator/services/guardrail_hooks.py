@@ -57,27 +57,36 @@ async def injection_guardrail(
             tripwire_triggered=False,
         )
 
-    # Extract text from input
-    if isinstance(input, str):
-        message = input
-    elif isinstance(input, list):
-        # Get the last user message text
-        message = ""
+    # Extract ONLY the current user message — not the full sandwiched context string.
+    # The context_builder wraps the raw user message between unique delimiters so we
+    # can extract it precisely and avoid false-positives from conversation history.
+    DELIM_START = "[USER_MSG_7f3a9b2e]"
+    DELIM_END   = "[/USER_MSG_7f3a9b2e]"
+
+    raw_input = input if isinstance(input, str) else ""
+    if isinstance(input, list):
+        # Structured message list — grab the last user turn
         for item in reversed(input):
             if isinstance(item, dict) and item.get("role") == "user":
                 content = item.get("content", "")
                 if isinstance(content, str):
-                    message = content
+                    raw_input = content
                     break
                 elif isinstance(content, list):
                     for block in content:
                         if isinstance(block, dict) and block.get("type") == "text":
-                            message = block.get("text", "")
+                            raw_input = block.get("text", "")
                             break
-                    if message:
+                    if raw_input:
                         break
+
+    # If the input is the sandwiched context string, extract only the delimited user message
+    if DELIM_START in raw_input and DELIM_END in raw_input:
+        start_idx = raw_input.index(DELIM_START) + len(DELIM_START)
+        end_idx   = raw_input.index(DELIM_END)
+        message = raw_input[start_idx:end_idx].strip()
     else:
-        message = str(input)
+        message = raw_input
 
     result = _firewall.classify(message)
 

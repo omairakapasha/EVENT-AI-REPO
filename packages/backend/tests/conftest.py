@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
 from httpx import AsyncClient, ASGITransport
+import fakeredis.aioredis as fakeredis_aio
 
 from src.main import app
 from src.config.database import get_session
@@ -69,11 +70,21 @@ async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
         await session.rollback()
 
 
+# ── Redis fixture ─────────────────────────────────────────────────────────────
+
+@pytest_asyncio.fixture
+async def fake_redis():
+    """In-memory Redis emulator — no real Redis instance required."""
+    r = fakeredis_aio.FakeRedis(decode_responses=True)
+    yield r
+    await r.aclose()
+
+
 # ── FastAPI dependency override ───────────────────────────────────────────────
 
 @pytest_asyncio.fixture
-async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    """AsyncClient with the test DB session injected and rate limiting bypassed."""
+async def client(db_session: AsyncSession, fake_redis) -> AsyncGenerator[AsyncClient, None]:
+    """AsyncClient with the test DB session injected, Redis mocked, and rate limiting bypassed."""
     import src.api.v1.auth as auth_module
     import src.api.v1.events as events_module
     import src.api.v1.notifications as notif_module
@@ -83,6 +94,9 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
     async def override_get_session():
         yield db_session
+
+    # Inject fake_redis into app.state so route handlers use it
+    app.state.redis = fake_redis
 
     app.dependency_overrides[get_session] = override_get_session
     # Override auth rate limiters

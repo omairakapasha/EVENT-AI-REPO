@@ -23,6 +23,7 @@ dependencies = [
     "google-auth>=2.49.2",
     "requests>=2.33.1",
     "pgvector>=0.3.6",
+    "redis[hiredis]>=5.0.0",
 ]
 
 [dependency-groups]
@@ -33,6 +34,7 @@ dev = [
     "pytest-cov",
     "hypothesis>=6.112.0",
     "respx>=0.21.1",
+    "fakeredis>=2.20.0",
 ]
 
 [tool.pytest.ini_options]

@@ -27,9 +27,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config.database import get_settings, get_session
 from src.models.user import User, RefreshToken, PasswordResetToken
 from src.services.auth_service import auth_service
+from src.services.email_service import email_service
 from src.services.google_oauth_service import google_oauth_service
 from src.services.otp_service import otp_service
-from src.models.email_otp import EmailOTP
 from src.schemas.auth import (
     UserRegister,
     UserLogin,
@@ -42,7 +42,6 @@ from src.schemas.auth import (
     LogoutRequest,
     PasswordResetRequest,
     PasswordResetConfirm,
-    PasswordResetTokenResponse,
     SuccessResponse,
 )
 from ...middleware.rate_limit import rate_limit_dependency
@@ -148,7 +147,14 @@ async def register(
 
     # Issue OTP and send verification email (fire-and-forget)
     display_name = f"{user_in.first_name or ''} {user_in.last_name or ''}".strip() or user_in.email
-    await otp_service.issue_otp(session, user.id, user.email, display_name)
+    try:
+        redis = getattr(request.app.state, "redis", None)
+        if redis:
+            await otp_service.issue_otp(redis, user.id, user.email, display_name)
+        else:
+            log.warning("auth.register.otp_skipped", reason="redis_not_configured", user_id=str(user.id))
+    except Exception as otp_err:
+        log.warning("auth.register.otp_failed", error=str(otp_err), user_id=str(user.id))
 
     log.info("auth.register.success", user_id=str(user.id), email=user.email, ip=client_ip)
 
@@ -173,12 +179,19 @@ class OTPVerifyRequest(_BaseModel):
     summary="Verify email with 6-digit OTP",
 )
 async def verify_email(
+    request: Request,
     body: OTPVerifyRequest,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(_get_current_user),
 ):
     """Verify the authenticated user's email using a 6-digit OTP."""
-    await otp_service.verify_otp(session, current_user.id, body.code)
+    redis = getattr(request.app.state, "redis", None)
+    if not redis:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"code": "SERVICE_UNAVAILABLE", "message": "Email verification is temporarily unavailable. Please try again later."},
+        )
+    await otp_service.verify_otp(redis, current_user.id, body.code)
 
     current_user.email_verified = True
     await session.commit()
@@ -192,6 +205,7 @@ async def verify_email(
     summary="Resend email verification OTP",
 )
 async def resend_otp(
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(_get_current_user),
 ):
@@ -202,8 +216,15 @@ async def resend_otp(
             detail={"code": "EMAIL_ALREADY_VERIFIED", "message": "Email is already verified."},
         )
 
+    redis = getattr(request.app.state, "redis", None)
+    if not redis:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"code": "SERVICE_UNAVAILABLE", "message": "Email verification is temporarily unavailable. Please try again later."},
+        )
+
     display_name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or current_user.email
-    await otp_service.issue_otp(session, current_user.id, current_user.email, display_name)
+    await otp_service.issue_otp(redis, current_user.id, current_user.email, display_name)
 
     log.info("auth.otp_resent", user_id=str(current_user.id), email=current_user.email)
     return {"success": True, "data": {"message": "Verification code sent."}, "meta": {}}
@@ -471,7 +492,7 @@ async def logout(
     refresh_token = request.cookies.get("refresh_token")
     if refresh_token:
         await auth_service.revoke_refresh_token(session, refresh_token)
-    response = SuccessResponse(message="Logged out successfully")
+    response = JSONResponse(content={"success": True, "message": "Logged out successfully"})
     _clear_auth_cookies(response)
     return response
 
@@ -482,7 +503,7 @@ async def logout(
 
 @router.post(
     "/password-reset-request",
-    response_model=PasswordResetTokenResponse,
+    response_model=SuccessResponse,
     dependencies=[Depends(password_reset_limiter)],
     summary="Request a password reset token",
 )
@@ -495,8 +516,8 @@ async def request_password_reset(
     Request a one-time password reset token.
 
     Always returns 200 even for unregistered emails to prevent user enumeration.
-    In production, integrate an email service to deliver the token instead of
-    returning it in the response body.
+    The reset token is delivered exclusively via email — it is never included
+    in the HTTP response body or any log record.
     """
     client_ip = request.client.host if request.client else "unknown"
 
@@ -505,29 +526,37 @@ async def request_password_reset(
 
     if user is None:
         log.info("auth.password_reset.unregistered", email=body.email, ip=client_ip)
-        return PasswordResetTokenResponse(
-            token="dummy_token_for_security",
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
-            user_email=body.email,
-        )
+        return SuccessResponse(message="If that email is registered, a password reset link has been sent.")
 
     raw_token, expires_at = await auth_service.create_password_reset_token(session, user)
 
-    log.info(
-        "auth.password_reset.token_dev",
-        user_id=str(user.id),
-        email=user.email,
-        token=raw_token,
-        expires_at=expires_at.isoformat(),
+    log.info("auth.password_reset.requested", user_id=str(user.id), email=user.email)
+
+    settings = get_settings()
+    reset_link = f"{settings.frontend_url}/reset-password?token={raw_token}"
+    html_body = f"""
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px;">
+    <h2 style="color: #2563eb;">Reset your Event-AI password</h2>
+    <p>We received a request to reset the password for your account.</p>
+    <p style="margin: 24px 0;">
+        <a href="{reset_link}" style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+            Reset Password
+        </a>
+    </p>
+    <p style="color: #6b7280; font-size: 14px;">This link expires in 1 hour. If you did not request a password reset, you can safely ignore this email.</p>
+    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
+    <p style="color: #9ca3af; font-size: 12px;">Event-AI — Pakistan's Event Planning Marketplace</p>
+</div>
+"""
+    text_body = f"Reset your Event-AI password by visiting: {reset_link}\n\nThis link expires in 1 hour."
+    await email_service.send_email(
+        to=user.email,
+        subject="Reset your Event-AI password",
+        body_html=html_body,
+        body_text=text_body,
     )
 
-    # TODO: In production, call EmailService.send_password_reset(user.email, raw_token)
-
-    return PasswordResetTokenResponse(
-        token=raw_token,
-        expires_at=expires_at,
-        user_email=user.email,
-    )
+    return SuccessResponse(message="If that email is registered, a password reset link has been sent.")
 
 
 @router.post(

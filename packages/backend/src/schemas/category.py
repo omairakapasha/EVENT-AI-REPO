@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 class CategoryBase(BaseModel):
     name: str = Field(..., max_length=100)
@@ -20,7 +20,6 @@ class CategoryUpdate(BaseModel):
     display_order: Optional[int] = None
 
 class CategoryRead(CategoryBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
-    
-    class Config:
-        from_attributes = True

@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from openai import AsyncOpenAI
-from agents import set_tracing_disabled, OpenAIChatCompletionsModel
+from agents import set_tracing_disabled, OpenAIChatCompletionsModel, ModelSettings
 from agents.run import RunConfig
 
 from config.settings import get_settings
@@ -30,12 +30,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Cache-Control"] = "no-store"
+        # SSE streams set their own Cache-Control: no-cache — don't overwrite them.
+        # For all other responses, no-store prevents caching of sensitive API data.
+        content_type = response.headers.get("content-type", "")
+        if "text/event-stream" not in content_type:
+            response.headers["Cache-Control"] = "no-store"
         return response
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Clear settings cache so every startup reads fresh env values
+    get_settings.cache_clear()
     settings = get_settings()
 
     # DB — use async_database_url (sslmode stripped); pass SSL via connect_args
@@ -49,7 +55,7 @@ async def lifespan(app: FastAPI):
     # Disable tracing — Gemini via OpenAI-compatible endpoint, no OpenAI key
     set_tracing_disabled(True)
 
-    # Model via Gemini's OpenAI-compatible REST endpoint (no LiteLLM needed)
+    # Model via Gemini's OpenAI-compatible REST endpoint
     gemini_client = AsyncOpenAI(
         api_key=settings.gemini_api_key,
         base_url=settings.gemini_base_url,
@@ -58,7 +64,13 @@ async def lifespan(app: FastAPI):
         model=settings.gemini_model,
         openai_client=gemini_client,
     )
-    run_config = RunConfig(model=model)
+
+    # RunConfig — model + default settings; agents SDK v0.8.3 handles
+    # retries internally via the OpenAI client's built-in retry logic.
+    run_config = RunConfig(
+        model=model,
+        model_settings=ModelSettings(),
+    )
 
     # Canary token — generated at startup, never stored in .env or any file
     canary_token = str(uuid.uuid4())

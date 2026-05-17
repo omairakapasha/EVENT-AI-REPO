@@ -1,21 +1,133 @@
 @import "tailwindcss";
 @source "../../../../packages/ui/src";
 
+/* ── Brand palette ─────────────────────────────────────────────────────────
+   primary  → navy   #1A3D64   (CTAs, links, headings)
+   accent   → sage   #96A78D   (highlights, status badges)
+   canvas   → cream  #EFECE3   (sidebar, card backgrounds)
+   Admin uses a slightly cooler background to feel authoritative.
+   ───────────────────────────────────────────────────────────────────────── */
+
 :root {
-  --background: #f9fafb;
-  --foreground: #111827;
+  --brand-navy:  #1a3d64;
+  --brand-sage:  #96a78d;
+  --brand-cream: #efece3;
+
+  /* Admin-specific surface — slightly cooler than user portal */
+  --background:  #f2f0ea;
+  --foreground:  #111827;
+  --card-bg:     #ffffff;
+  --card-border: #e3e0d8;
+
+  --sidebar-bg:       #1a3d64;   /* navy sidebar */
+  --sidebar-text:     #d0e2f2;
+  --sidebar-active:   #2260a0;
+  --sidebar-hover:    #153252;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --color-background: var(--background);
+  --color-foreground:  var(--foreground);
+
+  /* Primary — navy scale */
+  --color-primary-50:  #edf3fa;
+  --color-primary-100: #d0e2f2;
+  --color-primary-200: #a3c5e5;
+  --color-primary-300: #6fa3d4;
+  --color-primary-400: #4280be;
+  --color-primary-500: #2260a0;
+  --color-primary-600: #1a3d64;
+  --color-primary-700: #153252;
+  --color-primary-800: #0f2540;
+  --color-primary-900: #091829;
+  --color-primary-950: #040c15;
+
+  /* Accent — sage scale */
+  --color-accent-50:  #f4f6f2;
+  --color-accent-100: #e6ebe2;
+  --color-accent-200: #cdd7c6;
+  --color-accent-300: #b3c3aa;
+  --color-accent-400: #96a78d;
+  --color-accent-500: #7a8f71;
+  --color-accent-600: #617558;
+  --color-accent-700: #4d5d45;
+  --color-accent-800: #394534;
+  --color-accent-900: #252e22;
+  --color-accent-950: #131811;
+
+  /* Canvas — cream scale */
+  --color-canvas-50:  #faf9f6;
+  --color-canvas-100: #efece3;
+  --color-canvas-200: #dedad0;
+  --color-canvas-300: #cac5b8;
+  --color-canvas-400: #b0a99a;
+  --color-canvas-500: #948d7e;
+  --color-canvas-600: #787063;
+  --color-canvas-700: #5e574d;
+  --color-canvas-800: #443f38;
+  --color-canvas-900: #2b2823;
+  --color-canvas-950: #161411;
+
+  /* Surface — warm-tinted neutrals */
+  --color-surface-50:  #faf9f6;
+  --color-surface-100: #f2f0ea;
+  --color-surface-200: #e3e0d8;
+  --color-surface-300: #ccc8be;
+  --color-surface-400: #aaa59a;
+  --color-surface-500: #888278;
+  --color-surface-600: #6a6560;
+  --color-surface-700: #504d48;
+  --color-surface-800: #363330;
+  --color-surface-900: #1e1c1a;
+  --color-surface-950: #0f0e0d;
 }
 
+/* ── Base styles ───────────────────────────────────────────────────────────── */
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* ── Admin sidebar ─────────────────────────────────────────────────────────── */
+.admin-sidebar {
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+}
+
+.admin-sidebar-item {
+  color: var(--sidebar-text);
+  transition: background 0.15s ease;
+}
+
+.admin-sidebar-item:hover {
+  background: var(--sidebar-hover);
+}
+
+.admin-sidebar-item.active {
+  background: var(--sidebar-active);
+  font-weight: 600;
+}
+
+/* ── Status badge helpers ──────────────────────────────────────────────────── */
+/* Pending — warm amber */
+.badge-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Active / Approved — sage green */
+.badge-active {
+  background: #e6ebe2;
+  color: #4d5d45;
+}
+
+/* Suspended / Rejected — muted red */
+.badge-suspended {
+  background: #fee2e2;
+  color: #991b1b;
 }

@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     # Gemini / LLM
     gemini_api_key: str = ""
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
-    gemini_model: str = "gemini-3-flash-preview"  # matches GEMINI_MODEL in .env
+    gemini_model: str = "gemini-2.5-flash"  # matches GEMINI_MODEL in .env
 
     # Backend API
     backend_api_url: str = "http://localhost:5000/api/v1"

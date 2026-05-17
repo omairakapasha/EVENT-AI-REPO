@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 class ServiceBase(BaseModel):
     name: str = Field(..., max_length=150)
@@ -24,8 +24,7 @@ class ServiceUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 class ServiceRead(ServiceBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     vendor_id: uuid.UUID
-    
-    class Config:
-        from_attributes = True

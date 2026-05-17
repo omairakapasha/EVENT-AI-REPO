@@ -433,7 +433,7 @@ This is the constitution's strongest area, reflecting genuine 2025/2026 AI engin
 - MCP tools read-only
 - No direct AI DB writes
 - Mem0 for persistent memory
-- OpenAI tracing disabled (correct for Gemini-via-LiteLLM)
+- OpenAI tracing disabled (correct for Gemini via OpenAI-compatible endpoint)
 
 #### ❌ No AI cost monitoring or budget limits
 

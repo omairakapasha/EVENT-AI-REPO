@@ -4,7 +4,7 @@ Customer Inquiry schemas for vendor marketplace.
 import uuid
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from ..models.inquiry import InquiryStatus
 
 
@@ -29,6 +29,8 @@ class CustomerInquiryUpdate(BaseModel):
 
 
 class CustomerInquiryRead(CustomerInquiryBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     vendor_id: uuid.UUID
     status: InquiryStatus
@@ -36,6 +38,3 @@ class CustomerInquiryRead(CustomerInquiryBase):
     vendor_responded_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
-    
-    class Config:
-        from_attributes = True

@@ -40,6 +40,9 @@ export function useVendorBookings(filters: BookingFilters = {}) {
         queryKey: ['bookings', filters],
         queryFn: () => fetchVendorBookings(filters),
         staleTime: 30_000,
+        // Intentionally overrides the global refetchOnWindowFocus: false default.
+        // Bookings are time-sensitive — always fetch fresh data when the vendor
+        // returns to the tab (e.g. after confirming a booking in another window).
         refetchOnWindowFocus: true,
     });
 }

@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Calendar, Store, MessageSquare, User, Menu, X, LogOut, ChevronDown, Package, Sparkles } from "lucide-react";
+import Image from "next/image";
+import { Calendar, Store, MessageSquare, User, Menu, X, LogOut, ChevronDown, Package } from "lucide-react";
 import { cn } from "@repo/ui/lib/utils";
 import { NotificationBell } from "./notification-bell";
 
@@ -80,10 +81,10 @@ export function Navbar() {
     return (
         <nav className="sticky top-0 z-50 transition-all duration-300"
             style={{
-                background: scrolled ? "rgba(255,255,255,0.94)" : "rgba(255,255,255,0.88)",
+                background: scrolled ? "rgba(239,236,227,0.97)" : "rgba(239,236,227,0.90)",
                 backdropFilter: "blur(20px)",
                 WebkitBackdropFilter: "blur(20px)",
-                borderBottom: scrolled ? "1px solid rgba(99,102,241,0.12)" : "1px solid rgba(226,232,240,0.7)",
+                borderBottom: scrolled ? "1px solid rgba(26,61,100,0.15)" : "1px solid rgba(26,61,100,0.08)",
                 boxShadow: scrolled ? "0 4px 24px rgba(0,0,0,0.06)" : "none",
             }}
             role="navigation" aria-label="Main navigation">
@@ -91,12 +92,11 @@ export function Navbar() {
                 <div className="flex h-16 items-center justify-between">
                     {/* Logo */}
                     <Link href="/" className="flex items-center gap-2.5 group">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-xl transition-transform group-hover:scale-105"
-                            style={{ background: "linear-gradient(135deg,#4f46e5,#7c3aed)", boxShadow: "0 4px 12px rgba(99,102,241,0.3)" }}>
-                            <Sparkles className="h-4 w-4 text-white" />
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl overflow-hidden transition-transform group-hover:scale-105">
+                            <Image src="/logo.png" alt="Event-AI" width={32} height={32} className="object-contain" />
                         </div>
                         <span className="text-base font-bold"
-                            style={{ background: "linear-gradient(135deg,#1e1b4b,#4f46e5)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                            style={{ background: "linear-gradient(135deg,#1A3D64,#96A78D)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                             Event-AI
                         </span>
                     </Link>
@@ -108,8 +108,8 @@ export function Navbar() {
                             return (
                                 <Link key={item.name} href={item.href}
                                     className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-150"
-                                    style={isActive ? { background: "rgba(99,102,241,0.08)", color: "#4f46e5" } : { color: "#64748b" }}
-                                    onMouseEnter={(e) => { if (!isActive) { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(99,102,241,0.05)"; (e.currentTarget as HTMLAnchorElement).style.color = "#1e293b"; } }}
+                                    style={isActive ? { background: "rgba(26,61,100,0.08)", color: "#1A3D64" } : { color: "#64748b" }}
+                                    onMouseEnter={(e) => { if (!isActive) { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(26,61,100,0.05)"; (e.currentTarget as HTMLAnchorElement).style.color = "#1A3D64"; } }}
                                     onMouseLeave={(e) => { if (!isActive) { (e.currentTarget as HTMLAnchorElement).style.background = "transparent"; (e.currentTarget as HTMLAnchorElement).style.color = "#64748b"; } }}
                                 >
                                     <item.icon className="h-4 w-4" />
@@ -125,9 +125,9 @@ export function Navbar() {
                         {isLoggedIn ? (
                             <div className="relative" ref={userMenuRef}>
                                 <button onClick={() => setUserMenuOpen(!userMenuOpen)}
-                                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-sm font-medium transition-all duration-150 hover:bg-indigo-50">
+                                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-sm font-medium transition-all duration-150 hover:bg-[#EFECE3]">
                                     <div className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
-                                        style={{ background: "linear-gradient(135deg,#4f46e5,#7c3aed)" }}>
+                                        style={{ background: "linear-gradient(135deg,#1A3D64,#2a5a8f)" }}>
                                         {userName ? userName.charAt(0).toUpperCase() : "U"}
                                     </div>
                                     <span className="hidden md:inline text-sm font-medium text-slate-700">{userName || "Account"}</span>
@@ -151,12 +151,12 @@ export function Navbar() {
                         ) : (
                             <Link href="/login"
                                 className="px-4 py-2 text-sm font-semibold text-white rounded-xl transition-all active:scale-[0.98]"
-                                style={{ background: "linear-gradient(135deg,#4f46e5,#7c3aed)", boxShadow: "0 4px 12px rgba(99,102,241,0.3)" }}>
+                                style={{ background: "linear-gradient(135deg,#1A3D64,#2a5a8f)", boxShadow: "0 4px 12px rgba(26,61,100,0.3)" }}>
                                 Sign in
                             </Link>
                         )}
                         <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            className="sm:hidden p-2 rounded-xl text-slate-500 hover:bg-indigo-50 transition-colors"
+                            className="sm:hidden p-2 rounded-xl text-slate-500 hover:bg-[#EFECE3] transition-colors"
                             aria-label="Toggle menu">
                             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                         </button>
@@ -166,14 +166,14 @@ export function Navbar() {
 
             {/* Mobile menu */}
             {mobileMenuOpen && (
-                <div className="sm:hidden border-t border-gray-100 bg-white/95 backdrop-blur-xl">
+                <div className="sm:hidden border-t border-[#1A3D64]/10 bg-[#EFECE3]/95 backdrop-blur-xl">
                     <div className="px-4 py-3 space-y-1">
                         {navigation.map((item) => (
                             <Link key={item.name} href={item.href}
                                 onClick={() => setMobileMenuOpen(false)}
                                 className={cn(
                                     "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
-                                    pathname === item.href ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-gray-50"
+                                    pathname === item.href ? "bg-[#1A3D64]/10 text-[#1A3D64]" : "text-slate-600 hover:bg-[#1A3D64]/05"
                                 )}>
                                 <item.icon className="h-5 w-5" />
                                 {item.name}

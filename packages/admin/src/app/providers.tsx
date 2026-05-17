@@ -5,7 +5,18 @@ import { useState } from "react";
 import { Toaster } from "react-hot-toast";
 
 export function Providers({ children }: { children: React.ReactNode }) {
-    const [queryClient] = useState(() => new QueryClient());
+    const [queryClient] = useState(
+        () =>
+            new QueryClient({
+                defaultOptions: {
+                    queries: {
+                        staleTime: 30 * 1000, // 30 seconds
+                        refetchOnWindowFocus: false,
+                        retry: 1,
+                    },
+                },
+            })
+    );
 
     return (
         <QueryClientProvider client={queryClient}>

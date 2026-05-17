@@ -133,7 +133,7 @@
 
 #### Agent Pipeline
 - `TriageAgent` → `EventPlannerAgent` → `VendorDiscoveryAgent` → `BookingAgent` → `OrchestratorAgent`
-- Built with OpenAI Agents SDK + Gemini via LiteLLM (`gemini/gemini-3-flash-preview`)
+- Built with OpenAI Agents SDK + Gemini via OpenAI-compatible endpoint (`gemini-2.5-flash`)
 - `RunConfig(tracing_disabled=True)` — works with Gemini key, no OpenAI tracing
 
 #### Security Stack

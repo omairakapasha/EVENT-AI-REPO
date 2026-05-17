@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
     Calendar, Search, MessageSquare, Shield, Sparkles, ArrowRight,
     Star, MapPin, CheckCircle, Zap, Users, TrendingUp,
@@ -10,19 +11,19 @@ const features = [
         icon: Search,
         title: "Smart Vendor Discovery",
         description: "AI-powered matching finds the perfect vendors for your event type, budget, and location in seconds.",
-        color: "bg-indigo-50 text-indigo-600",
+        color: "bg-[#EFECE3] text-[#1A3D64]",
     },
     {
         icon: Calendar,
         title: "AI Event Planning",
         description: "Create detailed event plans with timelines, checklists, and vendor coordination — all guided by AI.",
-        color: "bg-purple-50 text-purple-600",
+        color: "bg-[#EFECE3] text-[#96A78D]",
     },
     {
         icon: MessageSquare,
         title: "Direct Messaging",
         description: "Chat with vendors, negotiate prices, and confirm bookings without ever leaving the platform.",
-        color: "bg-blue-50 text-blue-600",
+        color: "bg-[#1A3D64]/10 text-[#1A3D64]",
     },
     {
         icon: Shield,
@@ -70,7 +71,7 @@ const testimonials = [
         text: "Saved us weeks of vendor research for our annual conference. The booking system is seamless.",
         rating: 5,
         avatar: "B",
-        color: "from-blue-400 to-indigo-500",
+        color: "from-[#1A3D64] to-[#2a5a8f]",
     },
     {
         name: "Sara Malik",
@@ -78,7 +79,7 @@ const testimonials = [
         text: "The AI assistant helped me plan 3 events simultaneously. I can't imagine going back to the old way.",
         rating: 5,
         avatar: "S",
-        color: "from-purple-400 to-violet-500",
+        color: "from-[#96A78D] to-[#7a8f72]",
     },
 ];
 
@@ -95,17 +96,17 @@ export default function HomePage() {
         <div className="min-h-screen bg-white">
 
             {/* ── Hero ── */}
-            <section className="relative overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
+            <section className="relative overflow-hidden bg-gradient-to-br from-[#EFECE3] via-white to-[#EFECE3]/60 px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
                 {/* Background decoration */}
                 <div className="absolute inset-0 -z-10 overflow-hidden">
-                    <div className="absolute -top-40 -right-32 h-96 w-96 rounded-full bg-indigo-100/60 blur-3xl" />
-                    <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-purple-100/60 blur-3xl" />
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-64 rounded-full bg-blue-50/80 blur-3xl" />
+                    <div className="absolute -top-40 -right-32 h-96 w-96 rounded-full bg-[#1A3D64]/8 blur-3xl" />
+                    <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-[#96A78D]/15 blur-3xl" />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-64 rounded-full bg-[#EFECE3]/80 blur-3xl" />
                 </div>
 
                 <div className="mx-auto max-w-4xl text-center">
                     {/* Badge */}
-                    <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 border border-indigo-100 px-4 py-1.5 text-sm font-semibold text-indigo-700 mb-6">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-[#EFECE3] border border-[#96A78D]/30 px-4 py-1.5 text-sm font-semibold text-[#1A3D64] mb-6">
                         <Sparkles className="h-4 w-4" />
                         AI-Powered Event Planning in Pakistan
                     </div>
@@ -114,7 +115,7 @@ export default function HomePage() {
                     <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-gray-900 leading-tight">
                         Plan Your Perfect Event
                         <br />
-                        <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                        <span className="bg-gradient-to-r from-[#1A3D64] to-[#96A78D] bg-clip-text text-transparent">
                             with AI
                         </span>
                     </h1>
@@ -129,7 +130,7 @@ export default function HomePage() {
                     <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
                         <Link
                             href="/create-event"
-                            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-indigo-200 hover:from-indigo-700 hover:to-indigo-800 hover:shadow-xl hover:shadow-indigo-200 active:scale-[0.98] transition-all duration-200"
+                            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1A3D64] to-[#2a5a8f] px-8 py-4 text-base font-semibold text-white shadow-lg shadow-[#1A3D64]/20 hover:from-[#122d4a] hover:to-[#1A3D64] hover:shadow-xl hover:shadow-[#1A3D64]/25 active:scale-[0.98] transition-all duration-200"
                         >
                             Start Planning Free
                             <ArrowRight className="h-5 w-5" />
@@ -151,7 +152,7 @@ export default function HomePage() {
                                         key={l}
                                         className="h-8 w-8 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white"
                                         style={{
-                                            background: `linear-gradient(135deg, ${["#6366f1", "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b"][i]}, ${["#8b5cf6", "#a78bfa", "#6366f1", "#059669", "#d97706"][i]})`,
+                                            background: `linear-gradient(135deg, ${["#1A3D64", "#96A78D", "#2a5a8f", "#7a8f72", "#122d4a"][i]}, ${["#2a5a8f", "#7a8f72", "#1A3D64", "#96A78D", "#1A3D64"][i]})`,
                                         }}
                                     >
                                         {l}
@@ -176,7 +177,7 @@ export default function HomePage() {
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
                         {stats.map((stat) => (
                             <div key={stat.label} className="text-center">
-                                <p className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                                <p className="text-3xl font-bold bg-gradient-to-r from-[#1A3D64] to-[#96A78D] bg-clip-text text-transparent">
                                     {stat.value}
                                 </p>
                                 <p className="mt-1 text-sm text-gray-500">{stat.label}</p>
@@ -206,7 +207,7 @@ export default function HomePage() {
                                 style={{ animationDelay: `${i * 60}ms` }}
                             >
                                 <div className="text-3xl mb-3">{type.emoji}</div>
-                                <h3 className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                                <h3 className="font-semibold text-gray-900 group-hover:text-[#1A3D64] transition-colors">
                                     {type.name}
                                 </h3>
                                 <p className="text-xs text-gray-400 mt-1">{type.count} events</p>
@@ -245,7 +246,7 @@ export default function HomePage() {
             </section>
 
             {/* ── How It Works ── */}
-            <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+            <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-[#EFECE3] via-white to-[#EFECE3]/60">
                 <div className="mx-auto max-w-7xl">
                     <div className="text-center mb-16">
                         <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">How It Works</h2>
@@ -253,7 +254,7 @@ export default function HomePage() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
                         {/* Connector line */}
-                        <div className="hidden md:block absolute top-8 left-1/3 right-1/3 h-0.5 bg-gradient-to-r from-indigo-200 to-purple-200" />
+                        <div className="hidden md:block absolute top-8 left-1/3 right-1/3 h-0.5 bg-gradient-to-r from-[#1A3D64]/30 to-[#96A78D]/40" />
 
                         {[
                             { step: "01", title: "Tell AI Your Vision", desc: "Describe your event — type, date, budget, and preferences. Our AI understands exactly what you need.", icon: Sparkles },
@@ -261,10 +262,10 @@ export default function HomePage() {
                             { step: "03", title: "Book & Celebrate", desc: "Book services directly, manage everything in one dashboard, and focus on enjoying your event.", icon: CheckCircle },
                         ].map((item, i) => (
                             <div key={item.step} className="relative text-center">
-                                <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-200 mb-6">
+                                <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1A3D64] to-[#2a5a8f] shadow-lg shadow-[#1A3D64]/20 mb-6">
                                     <item.icon className="h-8 w-8 text-white" />
                                 </div>
-                                <div className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-white border-2 border-indigo-200 flex items-center justify-center text-xs font-bold text-indigo-600">
+                                <div className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-white border-2 border-[#96A78D]/50 flex items-center justify-center text-xs font-bold text-[#1A3D64]">
                                     {item.step}
                                 </div>
                                 <h3 className="text-xl font-bold text-gray-900 mb-3">{item.title}</h3>
@@ -314,20 +315,20 @@ export default function HomePage() {
             {/* ── CTA ── */}
             <section className="px-4 sm:px-6 lg:px-8 py-20 bg-gray-50">
                 <div className="mx-auto max-w-4xl">
-                    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 to-purple-700 px-8 py-16 text-center shadow-2xl">
+                    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#1A3D64] to-[#2a5a8f] px-8 py-16 text-center shadow-2xl">
                         <div className="absolute -top-16 -right-16 h-64 w-64 rounded-full bg-white/10" />
                         <div className="absolute -bottom-16 -left-16 h-64 w-64 rounded-full bg-white/10" />
                         <div className="relative">
                             <h2 className="text-3xl sm:text-4xl font-bold text-white">
                                 Ready to Plan Your Event?
                             </h2>
-                            <p className="mt-4 text-lg text-indigo-100 max-w-xl mx-auto">
+                            <p className="mt-4 text-lg text-[#EFECE3]/80 max-w-xl mx-auto">
                                 Join 10,000+ event planners using Event-AI to create memorable experiences across Pakistan.
                             </p>
                             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
                                 <Link
                                     href="/signup"
-                                    className="rounded-xl bg-white px-8 py-3.5 text-base font-semibold text-indigo-600 hover:bg-gray-50 active:scale-[0.98] transition-all duration-150 shadow-lg"
+                                    className="rounded-xl bg-[#EFECE3] px-8 py-3.5 text-base font-semibold text-[#1A3D64] hover:bg-white active:scale-[0.98] transition-all duration-150 shadow-lg"
                                 >
                                     Create Free Account
                                 </Link>
@@ -348,7 +349,7 @@ export default function HomePage() {
                 <div className="mx-auto max-w-7xl">
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#1A3D64] to-[#96A78D]">
                                 <Calendar className="h-4 w-4 text-white" />
                             </div>
                             <span className="font-bold text-gray-900">Event-AI</span>

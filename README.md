@@ -54,7 +54,7 @@ C:\Users\omair\OneDrive\Desktop\Event\
 ## 🛠️ Tech Stack
 
 - **Backend:** Python 3.13, FastAPI, SQLModel, PostgreSQL (Neon) + `pgvector`.
-- **AI Service:** OpenAI Agents SDK, Gemini 1.5 Pro/Flash, LiteLLM, Mem0.
+- **AI Service:** OpenAI Agents SDK, Gemini (via OpenAI-compatible endpoint), Mem0.
 - **Frontend:** Next.js 16, React 19, Tailwind CSS v4, React Query, SSE.
 - **Infrastructure:** Turborepo, pnpm, Docker, uv (Python pkg mgr).
 - **Security:** 7-layer Prompt Firewall, JWT Rotation, Google OAuth2, PII Redaction.

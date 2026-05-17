@@ -10,8 +10,9 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # ── SDK imports ───────────────────────────────────────────────────
-from agents import Runner
+from agents import Runner, ItemHelpers
 from agents.run import RunConfig
+from openai.types.responses import ResponseTextDeltaEvent
 
 # ── SSE ───────────────────────────────────────────────────────────
 try:
@@ -97,9 +98,9 @@ async def chat(
     # 2. Session management
     chat_session = await _chat_service.get_or_create_session(db, user_id, body.session_id)
 
-    # 3. Memory injection
+    # 3. Memory injection — semantic search scoped to current message
     memory_svc = MemoryService(api_key=settings.mem0_api_key)
-    memory_context = await memory_svc.get_user_memory(user_id)
+    memory_context = await memory_svc.search_user_memory(user_id, safe_message, top_k=5)
 
     # 4. Build conversation history
     history_msgs = await _chat_service.get_session_messages(db, chat_session.id, limit=6)
@@ -115,7 +116,7 @@ async def chat(
 
     try:
         start = time.monotonic()
-        result = await Runner.run(triage_agent, agent_input, run_config=run_config)
+        result = await Runner.run(triage_agent, agent_input, run_config=run_config, max_turns=10)
         latency_ms = int((time.monotonic() - start) * 1000)
         response_text = result.final_output or ""
         agent_name = result.last_agent.name if hasattr(result, "last_agent") and result.last_agent else "TriageAgent"
@@ -144,13 +145,35 @@ async def chat(
                     "guardrail_triggered": True,
                 }
             })
+        if "MaxTurnsExceeded" in exc_name:
+            logger.warning("MaxTurnsExceeded for session %s", chat_session.id)
+            return JSONResponse(content={
+                "success": True,
+                "data": {
+                    "response": "I wasn't able to complete that in time. Could you simplify your request or try again?",
+                    "agent": "TriageAgent",
+                    "session_id": str(chat_session.id),
+                    "guardrail_triggered": False,
+                }
+            })
+        # Rate limit — return 200 with a polite message so the UI doesn't show an error
+        if "RateLimitError" in exc_name or "429" in str(e):
+            logger.warning("Rate limit hit for session %s", chat_session.id)
+            return JSONResponse(content={
+                "success": True,
+                "data": {
+                    "response": "I'm a bit busy right now — please wait a moment and try again. 🙏",
+                    "agent": "TriageAgent",
+                    "session_id": str(chat_session.id),
+                    "guardrail_triggered": False,
+                }
+            })
         logger.error("Agent run error: %s", e, exc_info=True)
         guardrail_svc.audit("agent_error", str(chat_session.id), user_id, {"error": str(e)})
         return JSONResponse(status_code=500, content={
             "success": False,
             "error": {"code": "AGENT_ERROR", "message": "I encountered an issue. Please try again."}
         })
-
     # 7. Output leak detection
     leak_detector: OutputLeakDetector = getattr(request.app.state, "leak_detector", None)
     if leak_detector:
@@ -168,7 +191,20 @@ async def chat(
     except Exception as e:
         logger.warning("Failed to persist chat turn: %s", e)
 
-    # 10. Audit
+    # 10. Save turn to Mem0 (fire-and-forget — never block the response)
+    try:
+        memory_svc_write = MemoryService(api_key=settings.mem0_api_key)
+        await memory_svc_write.update_user_memory(
+            user_id=user_id,
+            messages=[
+                {"role": "user", "content": safe_message},
+                {"role": "assistant", "content": safe_response},
+            ],
+        )
+    except Exception as e:
+        logger.warning("Mem0 turn save failed — skipping: %s", e)
+
+    # 11. Audit
     guardrail_svc.audit("chat_turn", str(chat_session.id), user_id, {
         "agent": agent_name, "latency_ms": latency_ms
     })
@@ -213,7 +249,7 @@ async def chat_stream(
     safe_message = guardrail_result.message
     chat_session = await _chat_service.get_or_create_session(db, user_id, body.session_id)
     memory_svc = MemoryService(api_key=settings.mem0_api_key)
-    memory_context = await memory_svc.get_user_memory(user_id)
+    memory_context = await memory_svc.search_user_memory(user_id, safe_message, top_k=5)
     history_msgs = await _chat_service.get_session_messages(db, chat_session.id, limit=6)
     history = [{"role": m.role if isinstance(m.role, str) else m.role.value, "content": m.content} for m in history_msgs]
     canary_token = getattr(request.app.state, "canary_token", "")
@@ -231,7 +267,7 @@ async def chat_stream(
         start = time.monotonic()
 
         try:
-            stream = Runner.run_streamed(triage_agent, agent_input, run_config=run_config)
+            stream = Runner.run_streamed(triage_agent, agent_input, run_config=run_config, max_turns=10)
             async for event in stream.stream_events():
                 # Check for client disconnect
                 if await request.is_disconnected():
@@ -239,65 +275,42 @@ async def chat_stream(
                     break
 
                 event_type = getattr(event, "type", None)
-                # ── DEBUG ──────────────────────────────────────────────────
-                logger.debug("[STREAM] event_type=%s event=%r", event_type, event)
-                # ── END DEBUG ──────────────────────────────────────────────
+                logger.debug("[STREAM] event_type=%s", event_type)
 
                 if event_type == "raw_response_event":
-                    data = getattr(event, "data", None)
-                    delta = getattr(data, "delta", None)
-                    logger.debug("[STREAM] raw data=%r delta=%r delta.content=%r",
-                                 data, delta, getattr(delta, "content", "NO_CONTENT"))
-                    text = None
+                    # Responses API path (OpenAI native) — token-by-token deltas
+                    if isinstance(event.data, ResponseTextDeltaEvent):
+                        text = event.data.delta
+                        if text:
+                            full_response.append(text)
+                            stream_buffer += text
 
-                    if delta is not None:
-                        # Chat Completions path (LiteLLM): delta.content is a plain string
-                        if isinstance(getattr(delta, "content", None), str):
-                            text = delta.content or None
-                        # Responses API path (OpenAI native): delta.content is a list of blocks
-                        elif hasattr(delta, "content") and isinstance(delta.content, list):
-                            for block in delta.content:
-                                block_text = getattr(block, "text", None)
-                                if block_text:
-                                    text = (text or "") + block_text
+                            if not buffer_checked and len(stream_buffer) >= 500:
+                                buffer_checked = True
+                                if leak_detector and leak_detector.scan_stream_buffer(stream_buffer[:500]):
+                                    yield {"data": json.dumps({"token": "I encountered an issue. Please try again.", "agent": agent_name})}
+                                    yield {"data": json.dumps({"done": True, "session_id": str(chat_session.id), "agent": agent_name})}
+                                    return
 
-                    if text:
-                        full_response.append(text)
-                        stream_buffer += text
-
-                        # Check stream buffer for leaks (first 500 chars)
-                        if not buffer_checked and len(stream_buffer) >= 500:
-                            buffer_checked = True
-                            if leak_detector and leak_detector.scan_stream_buffer(stream_buffer[:500]):
-                                yield {"data": json.dumps({"token": "I encountered an issue. Please try again.", "agent": agent_name})}
-                                yield {"data": json.dumps({"done": True, "session_id": str(chat_session.id), "agent": agent_name})}
-                                return
-
-                        yield {"data": json.dumps({"token": text, "agent": agent_name})}
+                            yield {"data": json.dumps({"token": text, "agent": agent_name})}
 
                 elif event_type == "run_item_stream_event":
-                    # LiteLLM uses run_item_stream_event with message_output_created
-                    name = getattr(event, "name", None)
-                    item = getattr(event, "item", None)
-                    if name == "message_output_created" and item:
-                        raw_item = getattr(item, "raw_item", None)
-                        if raw_item:
-                            # Extract text from raw_item.content (list of ResponseOutputText)
-                            content_list = getattr(raw_item, "content", None) or []
-                            for content_item in content_list:
-                                text = getattr(content_item, "text", None)
-                                if text:
-                                    full_response.append(text)
-                                    stream_buffer += text
+                    # Chat Completions path (Gemini / OpenAI-compatible) — full message on completion
+                    # Only use this if raw_response_event produced no tokens (avoid double-emit)
+                    if event.item.type == "message_output_item" and not full_response:
+                        text = ItemHelpers.text_message_output(event.item)
+                        if text:
+                            full_response.append(text)
+                            stream_buffer += text
 
-                                    if not buffer_checked and len(stream_buffer) >= 500:
-                                        buffer_checked = True
-                                        if leak_detector and leak_detector.scan_stream_buffer(stream_buffer[:500]):
-                                            yield {"data": json.dumps({"token": "I encountered an issue. Please try again.", "agent": agent_name})}
-                                            yield {"data": json.dumps({"done": True, "session_id": str(chat_session.id), "agent": agent_name})}
-                                            return
+                            if not buffer_checked and len(stream_buffer) >= 500:
+                                buffer_checked = True
+                                if leak_detector and leak_detector.scan_stream_buffer(stream_buffer[:500]):
+                                    yield {"data": json.dumps({"token": "I encountered an issue. Please try again.", "agent": agent_name})}
+                                    yield {"data": json.dumps({"done": True, "session_id": str(chat_session.id), "agent": agent_name})}
+                                    return
 
-                                    yield {"data": json.dumps({"token": text, "agent": agent_name})}
+                            yield {"data": json.dumps({"token": text, "agent": agent_name})}
 
                 elif event_type == "agent_updated_stream_event":
                     new_agent = getattr(getattr(event, "new_agent", None), "name", None)
@@ -305,8 +318,16 @@ async def chat_stream(
                         agent_name = new_agent
 
         except Exception as e:
-            logger.error("Streaming agent error: %s", e, exc_info=True)
-            yield {"data": json.dumps({"token": "I encountered an issue. Please try again.", "agent": "System"})}
+            exc_name = type(e).__name__
+            if "MaxTurnsExceeded" in exc_name:
+                logger.warning("MaxTurnsExceeded in stream for session %s", chat_session.id)
+                yield {"data": json.dumps({"token": "I wasn't able to complete that in time. Could you simplify your request or try again?", "agent": agent_name})}
+            elif "RateLimitError" in exc_name or "429" in str(e):
+                logger.warning("Rate limit hit in stream for session %s", chat_session.id)
+                yield {"data": json.dumps({"token": "I'm a bit busy right now — please wait a moment and try again. 🙏", "agent": agent_name})}
+            else:
+                logger.error("Streaming agent error: %s", e, exc_info=True)
+                yield {"data": json.dumps({"token": "I encountered an issue. Please try again.", "agent": "System"})}
 
         latency_ms = int((time.monotonic() - start) * 1000)
         assembled = "".join(full_response)
@@ -325,6 +346,19 @@ async def chat_stream(
             await _chat_service.save_turn(db, chat_session, safe_message, safe_assembled, agent_name, latency_ms)
         except Exception as e:
             logger.warning("Failed to persist streaming turn: %s", e)
+
+        # Save turn to Mem0
+        try:
+            memory_svc_write = MemoryService(api_key=settings.mem0_api_key)
+            await memory_svc_write.update_user_memory(
+                user_id=user_id,
+                messages=[
+                    {"role": "user", "content": safe_message},
+                    {"role": "assistant", "content": safe_assembled},
+                ],
+            )
+        except Exception as e:
+            logger.warning("Mem0 streaming turn save failed — skipping: %s", e)
 
         yield {"data": json.dumps({"done": True, "session_id": str(chat_session.id), "agent": agent_name})}
 

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import {
@@ -334,8 +335,8 @@ export function VendorLayout({ children }: { children: React.ReactNode }) {
         <div className="flex min-h-screen bg-surface-50 dark:bg-surface-950">
             <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-surface-200 bg-white dark:border-surface-800 dark:bg-surface-900">
                 <div className="flex h-16 items-center gap-3 border-b border-surface-200 px-6 dark:border-surface-800">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary-500 to-primary-600">
-                        <Package className="h-5 w-5 text-white" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden flex-shrink-0">
+                        <Image src="/logo.png" alt="Event-AI" width={36} height={36} className="object-contain" />
                     </div>
                     <div>
                         <p className="text-sm font-semibold text-surface-900 dark:text-surface-50">Vendor Portal</p>
@@ -353,8 +354,8 @@ export function VendorLayout({ children }: { children: React.ReactNode }) {
                                 className={cn(
                                     'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                                     isActive
-                                        ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400'
-                                        : 'text-surface-600 hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-50'
+                                        ? 'bg-[#EFECE3] text-[#1A3D64] dark:bg-[#1A3D64]/20 dark:text-[#96A78D]'
+                                        : 'text-surface-600 hover:bg-[#EFECE3]/60 hover:text-[#1A3D64] dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-50'
                                 )}
                             >
                                 <item.icon className="h-5 w-5" />

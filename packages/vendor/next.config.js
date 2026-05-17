@@ -1,7 +1,12 @@
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     output: 'standalone',
     reactStrictMode: true,
+    turbopack: {
+        root: path.resolve(__dirname, '../..'),
+    },
     // Move dev cache out of the default .next to avoid conflicts with Docker build output.
     // Uses a local .next-dev folder (works on Linux, macOS, and Windows).
     distDir: process.env.NODE_ENV === 'development' ? '.next-dev' : '.next',

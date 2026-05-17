@@ -9,21 +9,58 @@ module.exports = {
     theme: {
         extend: {
             colors: {
-                // Brand colors
+                // ── Brand palette ─────────────────────────────────────────
+                // Derived from: #96A78D (sage), #EFECE3 (cream), #1A3D64 (navy)
+                //
+                // primary  → navy  #1A3D64  (CTAs, links, headings)
+                // accent   → sage  #96A78D  (highlights, badges, icons)
+                // canvas   → cream #EFECE3  (page backgrounds, cards)
+
                 primary: {
-                    50: '#eef2ff',
-                    100: '#e0e7ff',
-                    200: '#c7d2fe',
-                    300: '#a5b4fc',
-                    400: '#818cf8',
-                    500: '#6366f1',
-                    600: '#4f46e5',
-                    700: '#4338ca',
-                    800: '#3730a3',
-                    900: '#312e81',
-                    950: '#1e1b4b',
+                    50:  '#edf3fa',
+                    100: '#d0e2f2',
+                    200: '#a3c5e5',
+                    300: '#6fa3d4',
+                    400: '#4280be',
+                    500: '#2260a0',
+                    600: '#1a3d64', // ← anchor: #1A3D64
+                    700: '#153252',
+                    800: '#0f2540',
+                    900: '#091829',
+                    950: '#040c15',
                 },
-                // Success colors
+
+                // Sage green accent — #96A78D is the 400/mid stop
+                accent: {
+                    50:  '#f4f6f2',
+                    100: '#e6ebe2',
+                    200: '#cdd7c6',
+                    300: '#b3c3aa',
+                    400: '#96a78d', // ← anchor: #96A78D
+                    500: '#7a8f71',
+                    600: '#617558',
+                    700: '#4d5d45',
+                    800: '#394534',
+                    900: '#252e22',
+                    950: '#131811',
+                },
+
+                // Warm cream canvas — #EFECE3 is the 100 stop
+                canvas: {
+                    50:  '#faf9f6',
+                    100: '#efece3', // ← anchor: #EFECE3
+                    200: '#dedad0',
+                    300: '#cac5b8',
+                    400: '#b0a99a',
+                    500: '#948d7e',
+                    600: '#787063',
+                    700: '#5e574d',
+                    800: '#443f38',
+                    900: '#2b2823',
+                    950: '#161411',
+                },
+
+                // Success colors (kept neutral — green already in accent)
                 success: {
                     50: '#ecfdf5',
                     100: '#d1fae5',
@@ -62,19 +99,19 @@ module.exports = {
                     800: '#991b1b',
                     900: '#7f1d1d',
                 },
-                // Neutral/Gray
+                // Surface — warm-tinted neutrals (replaces cold zinc)
                 surface: {
-                    50: '#fafafa',
-                    100: '#f4f4f5',
-                    200: '#e4e4e7',
-                    300: '#d4d4d8',
-                    400: '#a1a1aa',
-                    500: '#71717a',
-                    600: '#52525b',
-                    700: '#3f3f46',
-                    800: '#27272a',
-                    900: '#18181b',
-                    950: '#09090b',
+                    50:  '#faf9f6',
+                    100: '#f2f0ea',
+                    200: '#e3e0d8',
+                    300: '#ccc8be',
+                    400: '#aaa59a',
+                    500: '#888278',
+                    600: '#6a6560',
+                    700: '#504d48',
+                    800: '#363330',
+                    900: '#1e1c1a',
+                    950: '#0f0e0d',
                 },
             },
             fontFamily: {
@@ -85,8 +122,9 @@ module.exports = {
                 '2xs': ['0.625rem', { lineHeight: '0.75rem' }],
             },
             boxShadow: {
-                'glow': '0 0 20px rgba(99, 102, 241, 0.15)',
-                'glow-lg': '0 0 40px rgba(99, 102, 241, 0.25)',
+                'glow':    '0 0 20px rgba(26, 61, 100, 0.15)',
+                'glow-lg': '0 0 40px rgba(26, 61, 100, 0.25)',
+                'glow-accent': '0 0 20px rgba(150, 167, 141, 0.20)',
             },
             animation: {
                 'fade-in': 'fadeIn 0.3s ease-out',

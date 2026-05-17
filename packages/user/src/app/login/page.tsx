@@ -3,7 +3,8 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff, Loader2, AlertCircle, CheckCircle, Clock, Calendar, Sparkles, Star, Shield, Users } from "lucide-react";
+import { Eye, EyeOff, Loader2, AlertCircle, CheckCircle, Clock, Sparkles, Star, Shield, Users } from "lucide-react";
+import Image from "next/image";
 
 // ─── Google SVG ───────────────────────────────────────────────────────────────
 function GoogleIcon({ className }: { className?: string }) {
@@ -87,36 +88,37 @@ function LoginForm() {
     return (
         <div className="min-h-screen grid lg:grid-cols-2">
             {/* ── Left: Branding Panel ── */}
-            <div className="hidden lg:flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 p-12 text-white">
+            <div className="hidden lg:flex flex-col justify-between relative overflow-hidden p-12 text-white"
+                style={{ background: "linear-gradient(135deg, #1A3D64 0%, #2a5a8f 50%, #1A3D64 100%)" }}>
                 {/* Decorative blobs */}
                 <div className="absolute -top-24 -right-24 h-96 w-96 rounded-full bg-white/5 blur-3xl" />
-                <div className="absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-purple-500/20 blur-3xl" />
-                <div className="absolute top-1/2 right-0 h-64 w-64 rounded-full bg-indigo-400/10 blur-2xl" />
+                <div className="absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-[#96A78D]/15 blur-3xl" />
+                <div className="absolute top-1/2 right-0 h-64 w-64 rounded-full bg-[#EFECE3]/5 blur-2xl" />
 
                 {/* Logo */}
                 <div className="relative flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm shadow-lg">
-                        <Calendar className="h-6 w-6 text-white" />
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm shadow-lg overflow-hidden">
+                        <Image src="/logo.png" alt="Event-AI" width={44} height={44} className="object-contain" />
                     </div>
                     <div>
                         <span className="text-xl font-bold">Event-AI</span>
                         <div className="flex items-center gap-1 mt-0.5">
-                            <Sparkles className="h-3 w-3 text-indigo-200" />
-                            <span className="text-xs text-indigo-200">AI-Powered Planning</span>
+                            <Sparkles className="h-3 w-3 text-[#96A78D]" />
+                            <span className="text-xs text-[#96A78D]">AI-Powered Planning</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Main copy */}
                 <div className="relative">
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-indigo-100 mb-6">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-[#EFECE3]/80 mb-6">
                         <Star className="h-3 w-3 fill-amber-300 text-amber-300" />
                         Trusted by 10,000+ event planners in Pakistan
                     </div>
                     <h2 className="text-4xl font-bold leading-tight mb-4">
                         Plan unforgettable events with AI
                     </h2>
-                    <p className="text-indigo-200 text-lg leading-relaxed">
+                    <p className="text-[#EFECE3]/70 text-lg leading-relaxed">
                         Discover top vendors, get smart recommendations, and manage everything from weddings to corporate events — all in one place.
                     </p>
 
@@ -129,7 +131,7 @@ function LoginForm() {
                         ].map((stat) => (
                             <div key={stat.label} className="rounded-2xl bg-white/10 backdrop-blur-sm p-4 text-center">
                                 <p className="text-2xl font-bold text-white">{stat.value}</p>
-                                <p className="text-xs text-indigo-200 mt-1">{stat.label}</p>
+                                <p className="text-xs text-[#96A78D] mt-1">{stat.label}</p>
                             </div>
                         ))}
                     </div>
@@ -137,7 +139,7 @@ function LoginForm() {
 
                 {/* Testimonial */}
                 <div className="relative rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 p-6">
-                    <p className="text-sm text-indigo-100 leading-relaxed italic">
+                    <p className="text-sm text-[#EFECE3]/80 leading-relaxed italic">
                         &ldquo;{testimonials[0].text}&rdquo;
                     </p>
                     <div className="mt-4 flex items-center gap-3">
@@ -146,7 +148,7 @@ function LoginForm() {
                         </div>
                         <div>
                             <p className="text-sm font-semibold text-white">{testimonials[0].name}</p>
-                            <p className="text-xs text-indigo-300">{testimonials[0].role}</p>
+                            <p className="text-xs text-[#96A78D]">{testimonials[0].role}</p>
                         </div>
                     </div>
                 </div>
@@ -157,8 +159,8 @@ function LoginForm() {
                 <div className="w-full max-w-md">
                     {/* Mobile logo */}
                     <div className="flex items-center justify-center gap-2 mb-8 lg:hidden">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600">
-                            <Calendar className="h-5 w-5 text-white" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden">
+                            <Image src="/logo.png" alt="Event-AI" width={40} height={40} className="object-contain" />
                         </div>
                         <span className="text-xl font-bold text-gray-900">Event-AI</span>
                     </div>
@@ -233,7 +235,7 @@ function LoginForm() {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="you@example.com"
-                                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm placeholder:text-gray-400 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-150"
+                                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm placeholder:text-gray-400 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1A3D64]/40 focus:border-[#1A3D64] transition-all duration-150"
                                 />
                             </div>
 
@@ -242,7 +244,7 @@ function LoginForm() {
                                     <label htmlFor="password" className="text-sm font-medium text-gray-700">
                                         Password
                                     </label>
-                                    <Link href="/forgot-password" className="text-xs font-medium text-indigo-600 hover:text-indigo-700">
+                                    <Link href="/forgot-password" className="text-xs font-medium text-[#1A3D64] hover:text-[#2a5a8f]">
                                         Forgot password?
                                     </Link>
                                 </div>
@@ -254,7 +256,7 @@ function LoginForm() {
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="Enter your password"
-                                        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 pr-11 text-sm shadow-sm placeholder:text-gray-400 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-150"
+                                        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 pr-11 text-sm shadow-sm placeholder:text-gray-400 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1A3D64]/40 focus:border-[#1A3D64] transition-all duration-150"
                                     />
                                     <button
                                         type="button"
@@ -270,7 +272,7 @@ function LoginForm() {
                             <button
                                 type="submit"
                                 disabled={loading || googleLoading}
-                                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:from-indigo-700 hover:to-indigo-800 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-150"
+                                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1A3D64] to-[#2a5a8f] px-4 py-3 text-sm font-semibold text-white shadow-sm hover:from-[#122d4a] hover:to-[#1A3D64] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-150"
                             >
                                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                                 {loading ? "Signing in..." : "Sign in"}
@@ -279,7 +281,7 @@ function LoginForm() {
 
                         <p className="mt-6 text-center text-sm text-gray-500">
                             Don&apos;t have an account?{" "}
-                            <Link href="/signup" className="font-semibold text-indigo-600 hover:text-indigo-700">
+                            <Link href="/signup" className="font-semibold text-[#1A3D64] hover:text-[#2a5a8f]">
                                 Create one free
                             </Link>
                         </p>
@@ -292,7 +294,7 @@ function LoginForm() {
                             <span>SSL Secured</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                            <Users className="h-3.5 w-3.5 text-indigo-500" />
+                            <Users className="h-3.5 w-3.5 text-[#1A3D64]" />
                             <span>10K+ Users</span>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -309,12 +311,12 @@ function LoginForm() {
 export default function LoginPage() {
     return (
         <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="min-h-screen flex items-center justify-center bg-[#EFECE3]">
                 <div className="flex flex-col items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                        <Calendar className="h-5 w-5 text-white" />
+                    <div className="h-10 w-10 rounded-xl overflow-hidden">
+                        <Image src="/logo.png" alt="Event-AI" width={40} height={40} className="object-contain" />
                     </div>
-                    <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
+                    <Loader2 className="h-5 w-5 animate-spin text-[#1A3D64]" />
                 </div>
             </div>
         }>

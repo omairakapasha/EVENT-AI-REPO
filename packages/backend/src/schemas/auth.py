@@ -152,7 +152,11 @@ class PasswordResetConfirm(BaseModel):
 
 
 class PasswordResetTokenResponse(BaseModel):
-    """Response containing reset token (for testing/development)."""
+    """
+    DEPRECATED: No longer used by any endpoint as of the password-reset-token-exposure fix.
+    The token is now delivered exclusively via email. Do not use in new code.
+    Retained temporarily to avoid breaking any existing tests that reference this schema.
+    """
     token: str = Field(..., description="Raw password reset token")
     expires_at: datetime = Field(..., description="Token expiry timestamp")
     user_email: EmailStr = Field(..., description="Email of the user")
@@ -271,6 +275,5 @@ __all__ = [
     "LogoutRequest",
     "PasswordResetRequest",
     "PasswordResetConfirm",
-    "PasswordResetTokenResponse",
     "SuccessResponse",
 ]

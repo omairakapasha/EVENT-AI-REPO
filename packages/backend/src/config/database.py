@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 from typing import Optional
 import structlog
+import redis.asyncio as aioredis
 
 from pydantic import field_validator, EmailStr, Field
 
@@ -15,6 +16,7 @@ log = structlog.get_logger()
 class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost/postgres"
     direct_url: str | None = None
+    redis_url: str = "redis://localhost:6379/0"
 
     # JWT Authentication Settings
     jwt_secret_key: str = Field(..., min_length=32, description="JWT signing secret")
@@ -196,7 +198,23 @@ async def _cleanup_expired_locks() -> None:
 
 @asynccontextmanager
 async def lifespan(app):
+    # Clear settings cache so every startup reads fresh env values (mirrors orchestrator pattern)
+    get_settings.cache_clear()
+    settings = get_settings()
+
     app.state.async_session = async_session_maker
+
+    # Redis client — available to all route handlers via request.app.state.redis
+    # Redis is optional for local dev (used only for OTP email verification).
+    try:
+        _redis = aioredis.from_url(settings.redis_url, decode_responses=True)
+        await _redis.ping()
+        app.state.redis = _redis
+        log.info("redis.connected", url=settings.redis_url)
+    except Exception as redis_err:
+        app.state.redis = None
+        log.warning("redis.unavailable", error=str(redis_err),
+                    hint="OTP email verification disabled — install and start Redis if needed")
 
     # Init SSE manager on app.state (constitution: no global mutable state outside app.state)
     from src.services.sse_manager import SSEConnectionManager
@@ -249,5 +267,7 @@ async def lifespan(app):
         await cleanup_task
     except asyncio.CancelledError:
         pass
+    if app.state.redis:
+        await app.state.redis.aclose()
     await app.state.http_client.aclose()
     await engine.dispose()
