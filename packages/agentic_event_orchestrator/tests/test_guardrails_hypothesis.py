@@ -213,7 +213,7 @@ class TestCodeShieldProperties:
             "```python\neval(user_input)\n```",
             "```python\nexec(code)\n```",
             "```python\nos.system('rm -rf /')\n```",
-        }),
+        ]),
         suffix=st.text(max_size=50)
     )
     def test_dangerous_python_detected(self, shield, prefix, dangerous_code, suffix):

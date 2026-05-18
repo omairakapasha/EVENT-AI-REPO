@@ -10,6 +10,7 @@ Reference: https://openai.github.io/openai-agents-python/guardrails/
 """
 
 import logging
+import re
 from pydantic import BaseModel
 from agents import (
     Agent,
@@ -44,7 +45,7 @@ class InjectionCheckOutput(BaseModel):
 
 
 # ── Input guardrail: 7-layer PromptFirewall ───────────────────────
-@input_guardrail(run_in_parallel=False)  # blocking — LLM never runs on blocked input
+@input_guardrail  # blocking — LLM never runs on blocked input
 async def injection_guardrail(
     ctx: RunContextWrapper[None],
     agent: Agent,
@@ -117,7 +118,7 @@ class LeakCheckOutput(BaseModel):
 async def leak_detection_guardrail(
     ctx: RunContextWrapper,
     agent: Agent,
-    output: str,
+    output,  # str when no output_type; typed object otherwise — always coerce to str
 ) -> GuardrailFunctionOutput:
     """Scan final agent output for leaked system prompt fragments or canary tokens."""
     if _leak_detector is None:
@@ -170,25 +171,36 @@ def tool_injection_guard(data) -> ToolGuardrailFunctionOutput:
     return ToolGuardrailFunctionOutput.allow()
 
 
-# ── Tool output guardrail: redact PII from tool outputs ───────────
+# ── Tool output guardrail: block tool outputs containing raw PII ──
+# NOTE: ToolGuardrailFunctionOutput only supports .allow() and .reject_content().
+# The SDK does NOT support mutating/replacing tool output values.
+# PII redaction of the final response is handled downstream by
+# GuardrailService.filter_output() in the chat router.
+#
+# Strategy:
+#   - CNIC (national ID) → hard block: should never appear in agent context
+#   - Email / phone → allow through (common in vendor/booking data);
+#     GuardrailService.filter_output() redacts them before the final response
+_TOOL_CNIC_RE = re.compile(r"\b\d{5}-\d{7}-\d\b")
+
+
 @tool_output_guardrail
 def tool_pii_redact(data) -> ToolGuardrailFunctionOutput:
-    """Redact PII patterns from tool outputs before they reach the agent context."""
-    import re
+    """Block tool outputs that contain raw CNIC numbers.
+
+    Emails and phone numbers are allowed through to the agent context because
+    they are legitimately needed for booking/vendor workflows. The chat router's
+    GuardrailService.filter_output() redacts them before the final user response.
+
+    The SDK does not support mutating tool output — only block or allow.
+    """
     try:
         text = str(data.output or "")
-        _EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
-        _PHONE_RE = re.compile(r"(\+92|0092|0)?[\s\-]?([0-9]{3})[\s\-]?([0-9]{7,8})")
-        _CNIC_RE  = re.compile(r"\b\d{5}-\d{7}-\d\b")
-
-        redacted = _EMAIL_RE.sub("[EMAIL]", text)
-        redacted = _PHONE_RE.sub("[PHONE]", redacted)
-        redacted = _CNIC_RE.sub("[CNIC]", redacted)
-
-        if redacted != text:
-            logger.info("Tool output guardrail: PII redacted from tool output")
-            # Replace output with redacted version
-            return ToolGuardrailFunctionOutput(output=redacted, tripwire_triggered=False)
+        if _TOOL_CNIC_RE.search(text):
+            logger.warning("Tool output guardrail: CNIC detected in tool output — blocking")
+            return ToolGuardrailFunctionOutput.reject_content(
+                "Tool output blocked: contains sensitive identity number."
+            )
     except Exception as e:
         logger.debug("Tool output guardrail error: %s", e)
 

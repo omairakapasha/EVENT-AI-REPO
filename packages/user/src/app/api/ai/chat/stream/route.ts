@@ -1,9 +1,20 @@
 import { NextRequest } from "next/server";
+import { cookies } from "next/headers";
+
+export const runtime = "edge";
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || process.env.AGENT_SERVICE_URL || "http://localhost:8000";
 
 export async function POST(req: NextRequest) {
-  const token = req.headers.get("authorization") ?? "";
+  // Read access_token from httpOnly cookie (set by backend on login)
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("access_token")?.value || "";
+
+  // Prefer cookie-based token; fall back to any Authorization header from client
+  const authHeader = accessToken
+    ? `Bearer ${accessToken}`
+    : req.headers.get("authorization") ?? "";
+
   const body = await req.text();
 
   try {
@@ -11,7 +22,7 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": token,
+        "Authorization": authHeader,
         "X-API-Key": process.env.AI_SERVICE_API_KEY ?? "",
       },
       body,
@@ -40,3 +51,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

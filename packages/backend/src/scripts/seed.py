@@ -21,6 +21,7 @@ from sqlalchemy.orm import sessionmaker
 from src.config.database import get_settings
 from src.models.user import User
 from src.models.category import Category
+from src.models.event import EventType
 from src.services.auth_service import AuthService
 
 # Import all models so SQLAlchemy can resolve relationships
@@ -42,6 +43,17 @@ DEFAULT_CATEGORIES = [
     {"name": "Conference", "display_order": 6},
     {"name": "Birthday",   "display_order": 7},
     {"name": "Party",      "display_order": 8},
+]
+
+DEFAULT_EVENT_TYPES = [
+    {"name": "Wedding",        "description": "Nikah, baraat, walima ceremonies",          "display_order": 1},
+    {"name": "Mehndi",         "description": "Mehndi/henna ceremony",                     "display_order": 2},
+    {"name": "Birthday Party", "description": "Birthday celebrations",                     "display_order": 3},
+    {"name": "Corporate",      "description": "Business meetings, conferences, team events","display_order": 4},
+    {"name": "Conference",     "description": "Large-scale conferences and seminars",       "display_order": 5},
+    {"name": "Party",          "description": "General parties and social gatherings",      "display_order": 6},
+    {"name": "Baraat",         "description": "Wedding procession ceremony",                "display_order": 7},
+    {"name": "Walima",         "description": "Wedding reception ceremony",                 "display_order": 8},
 ]
 
 
@@ -86,6 +98,39 @@ async def seed_admin(session: AsyncSession, email: str, password: str) -> bool:
     await session.flush()
     log.info("seed.admin.created", email=email, user_id=str(user.id))
     return True
+
+
+async def seed_event_types(session: AsyncSession) -> dict:
+    """Create default event types if not exists. Returns counts."""
+    created = 0
+    skipped = 0
+
+    for et_data in DEFAULT_EVENT_TYPES:
+        result = await session.execute(
+            select(EventType).where(EventType.name == et_data["name"])
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            log.info("seed.event_type.skipped", name=et_data["name"], reason="already exists")
+            skipped += 1
+            continue
+
+        event_type = EventType(
+            id=uuid.uuid4(),
+            name=et_data["name"],
+            description=et_data["description"],
+            display_order=et_data["display_order"],
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        session.add(event_type)
+        await session.flush()
+        log.info("seed.event_type.created", name=et_data["name"])
+        created += 1
+
+    return {"created": created, "skipped": skipped}
 
 
 async def seed_categories(session: AsyncSession) -> dict:
@@ -139,6 +184,7 @@ async def run_seed() -> None:
                 settings.seed_admin_password,
             )
             cat_counts = await seed_categories(session)
+            et_counts = await seed_event_types(session)
 
     await engine.dispose()
 
@@ -147,6 +193,8 @@ async def run_seed() -> None:
         admin_created=admin_created,
         categories_created=cat_counts["created"],
         categories_skipped=cat_counts["skipped"],
+        event_types_created=et_counts["created"],
+        event_types_skipped=et_counts["skipped"],
     )
 
 

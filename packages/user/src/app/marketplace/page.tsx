@@ -45,12 +45,21 @@ export default function MarketplacePage() {
             }),
     });
 
-    // Extract vendors array from response
-    const rawVendors = response?.vendors || [];
+    // Extract vendors array from response envelope { success, data, meta }
+    const rawVendors = response?.data || [];
 
-    // Client-side sort
+    // Client-side sort and category filter
     const vendors = useMemo(() => {
-        const list = [...rawVendors];
+        let list = [...rawVendors];
+
+        // Filter by category name (backend only accepts category_ids/UUIDs)
+        if (category !== "All Categories") {
+            list = list.filter((v: any) => {
+                const vendorCategory = (v.category || v.businessType || "").toLowerCase();
+                return vendorCategory.includes(category.toLowerCase());
+            });
+        }
+
         switch (sortBy) {
             case "rating_desc":
                 return list.sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0));
@@ -61,7 +70,7 @@ export default function MarketplacePage() {
             default:
                 return list;
         }
-    }, [rawVendors, sortBy]);
+    }, [rawVendors, sortBy, category]);
 
     const totalPages = Math.ceil(vendors.length / PAGE_SIZE);
     const paginatedVendors = vendors.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -192,8 +201,8 @@ export default function MarketplacePage() {
                             <div key={vendor.id} className="group relative bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
                                 <div className="aspect-[4/3] bg-gradient-to-br from-indigo-50 to-purple-50 overflow-hidden relative">
                                     <img
-                                        src={vendor.logoUrl || "/placeholder-vendor.jpg"}
-                                        alt={vendor.name}
+                                        src={vendor.logoUrl || vendor.logo_url || "/placeholder-vendor.jpg"}
+                                        alt={vendor.business_name || vendor.name}
                                         className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
                                         onError={(e) => {
                                             (e.target as HTMLImageElement).style.display = 'none';
@@ -216,13 +225,13 @@ export default function MarketplacePage() {
                                         </div>
                                     )}
                                 </div>
-                                <div className="p-5">
+                                <div className="p-5 flex flex-col h-full">
                                     <div className="flex items-start justify-between gap-2">
-                                        <div className="min-w-0">
+                                        <div className="min-w-0 flex-1">
                                             <h3 className="font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
                                                 <Link href={`/marketplace/${vendor.id}`}>
                                                     <span aria-hidden="true" className="absolute inset-0" />
-                                                    {vendor.name}
+                                                    {vendor.business_name || vendor.name}
                                                 </Link>
                                             </h3>
                                             <p className="text-sm text-gray-500 mt-0.5">{vendor.category || vendor.businessType}</p>
@@ -232,17 +241,28 @@ export default function MarketplacePage() {
                                             <span className="text-sm font-semibold text-gray-900">
                                                 {vendor.rating ? Number(vendor.rating).toFixed(1) : "New"}
                                             </span>
-                                            {vendor.totalReviews ? (
-                                                <span className="text-xs text-gray-400">({vendor.totalReviews})</span>
+                                            {vendor.totalReviews || vendor.total_reviews ? (
+                                                <span className="text-xs text-gray-400">({vendor.totalReviews || vendor.total_reviews})</span>
                                             ) : null}
                                         </div>
                                     </div>
-                                    {vendor.serviceAreas?.length > 0 && (
-                                        <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-500">
-                                            <MapPin className="h-3.5 w-3.5 shrink-0" />
-                                            {vendor.serviceAreas.slice(0, 2).join(", ")}
+                                    {vendor.description && (
+                                        <div className="mt-3 text-sm text-gray-600 line-clamp-2">
+                                            {vendor.description}
                                         </div>
                                     )}
+                                    <div className="mt-auto pt-4 flex items-center gap-1.5 text-xs text-gray-500">
+                                        {(vendor.serviceAreas?.length > 0 || vendor.city || vendor.region) && (
+                                            <>
+                                                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                                <span className="truncate">
+                                                    {vendor.serviceAreas?.length > 0 
+                                                        ? vendor.serviceAreas.slice(0, 2).join(", ") 
+                                                        : [vendor.city, vendor.region].filter(Boolean).join(", ")}
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ))}

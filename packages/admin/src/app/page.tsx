@@ -254,11 +254,11 @@ export default function Dashboard() {
                             return (
                                 <div key={vendor.id} className="flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50/50 transition-colors">
                                     <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-100 to-indigo-100 text-violet-600 text-xs font-bold">
-                                        {vendor.name.substring(0, 2).toUpperCase()}
+                                        {vendor.business_name ? vendor.business_name.substring(0, 2).toUpperCase() : "??"}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-900 truncate">{vendor.name}</p>
-                                        <p className="text-xs text-gray-400 capitalize">{vendor.category}</p>
+                                        <p className="text-sm font-medium text-gray-900 truncate">{vendor.business_name}</p>
+                                        <p className="text-xs text-gray-400 capitalize">{vendor.city || vendor.owner_email || "Unknown"}</p>
                                     </div>
                                     <div className="flex items-center gap-1.5 flex-shrink-0">
                                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${

@@ -1,0 +1,4 @@
+# file: C:\Users\omair\OneDrive\Desktop\Event\packages\agentic_event_orchestrator\services\guardrail_service.py
+# hypothesis_version: 6.151.13
+
+[5000, '[CNIC REDACTED]', '[EMAIL REDACTED]', '[PHONE REDACTED]', '\\b\\d{5}-\\d{7}-\\d\\b', 'audit', 'available', 'baraat', 'birthday', 'book', 'booking', 'budget', 'catering', 'conference', 'confidence', 'corporate', 'cost', 'decor', 'empty_message', 'event', 'event_type', 'find', 'guest', 'hello', 'help', 'hi', 'injection_blocked', 'input_too_long', 'invite', 'mehndi', 'message_hash', 'metadata', 'music', 'no', 'off_topic', 'ok', 'okay', 'party', 'photography', 'plan', 'recommend', 'rsvp', 'schedule', 'search', 'session_id', 'thanks', 'threat_type', 'timestamp', 'user_id_hash', 'vendor', 'venue', 'walima', 'wedding', 'yes']

@@ -1,10 +1,13 @@
 """BookingAgent — manages booking requests with tool-level guardrails."""
-from agents import Agent
+from agents import Agent, function_tool
+from agents.run_context import RunContextWrapper
 from pipeline.instructions import BOOKING_INSTRUCTIONS
+from services.agent_context import AgentContext
 from services.guardrail_hooks import tool_injection_guard, tool_pii_redact
 from tools import get_my_bookings, get_booking_details, cancel_booking, get_vendor_services
-from tools.booking_tools import create_booking_request as _create_booking_request
-from _agents_sdk import function_tool
+from tools.booking_tools import create_booking_request as _raw_create_booking
+
+import json
 
 
 @function_tool(
@@ -12,23 +15,31 @@ from _agents_sdk import function_tool
     tool_output_guardrails=[tool_pii_redact],
 )
 async def create_booking_request(
+    ctx: RunContextWrapper[AgentContext],
     vendor_id: str,
     service_id: str,
     event_date: str,
     event_name: str,
     guest_count: int,
     notes: str = "",
+    quantity: int = 1,
 ) -> str:
     """Create a booking inquiry request for a vendor service.
     IMPORTANT: Only call this AFTER showing the user a summary and receiving explicit confirmation.
     Returns a JSON string with booking_id and status."""
-    return await _create_booking_request(
-        vendor_id=vendor_id,
-        service_id=service_id,
-        event_date=event_date,
-        event_name=event_name,
-        guest_count=guest_count,
-        notes=notes,
+    # Delegate to the raw tool's underlying function via its on_invoke_tool,
+    # passing the context and a JSON string of the arguments.
+    return await _raw_create_booking.on_invoke_tool(
+        ctx,
+        json.dumps({
+            "vendor_id": vendor_id,
+            "service_id": service_id,
+            "event_date": event_date,
+            "event_name": event_name,
+            "guest_count": guest_count,
+            "notes": notes,
+            "quantity": quantity,
+        }),
     )
 
 
@@ -39,3 +50,4 @@ def build_booking_agent(model):
         instructions=BOOKING_INSTRUCTIONS,
         tools=[create_booking_request, get_my_bookings, get_booking_details, cancel_booking, get_vendor_services],
     )
+

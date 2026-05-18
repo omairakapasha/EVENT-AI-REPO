@@ -2,6 +2,7 @@
 import json
 import logging
 import time
+import uuid
 
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse
@@ -22,6 +23,7 @@ except ImportError:
     SSE_AVAILABLE = False
 
 from config.dependencies import get_session, get_settings_dep
+from services.agent_context import AgentContext
 from services.guardrail_service import GuardrailService
 from services.chat_service import ChatService
 from services.memory_service import MemoryService
@@ -31,8 +33,8 @@ from services.output_leak_detector import OutputLeakDetector
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/ai", tags=["chat"])
 
-# Module-level service singletons (stateless, safe to share)
-_guardrail_service = GuardrailService()
+# Module-level stateless singleton — no firewall injected here.
+# Each request handler creates a firewall-aware instance from app.state.
 _chat_service = ChatService()
 
 
@@ -116,7 +118,11 @@ async def chat(
 
     try:
         start = time.monotonic()
-        result = await Runner.run(triage_agent, agent_input, run_config=run_config, max_turns=10)
+        try:
+            agent_ctx = AgentContext(db=db, user_id=uuid.UUID(user_id))
+        except (ValueError, AttributeError):
+            agent_ctx = AgentContext(db=db, user_id=uuid.UUID(int=0))
+        result = await Runner.run(triage_agent, agent_input, run_config=run_config, max_turns=10, context=agent_ctx)
         latency_ms = int((time.monotonic() - start) * 1000)
         response_text = result.final_output or ""
         agent_name = result.last_agent.name if hasattr(result, "last_agent") and result.last_agent else "TriageAgent"
@@ -158,7 +164,7 @@ async def chat(
             })
         # Rate limit — return 200 with a polite message so the UI doesn't show an error
         if "RateLimitError" in exc_name or "429" in str(e):
-            logger.warning("Rate limit hit for session %s", chat_session.id)
+            logger.warning("Rate limit hit for session %s — %s: %s", chat_session.id, exc_name, e)
             return JSONResponse(content={
                 "success": True,
                 "data": {
@@ -168,8 +174,8 @@ async def chat(
                     "guardrail_triggered": False,
                 }
             })
-        logger.error("Agent run error: %s", e, exc_info=True)
-        guardrail_svc.audit("agent_error", str(chat_session.id), user_id, {"error": str(e)})
+        logger.error("Agent run error [%s]: %s", exc_name, e, exc_info=True)
+        guardrail_svc.audit("agent_error", str(chat_session.id), user_id, {"error": str(e), "exc_type": exc_name})
         return JSONResponse(status_code=500, content={
             "success": False,
             "error": {"code": "AGENT_ERROR", "message": "I encountered an issue. Please try again."}
@@ -259,6 +265,11 @@ async def chat_stream(
     run_config: RunConfig = request.app.state.run_config
     leak_detector: OutputLeakDetector = getattr(request.app.state, "leak_detector", None)
 
+    try:
+        agent_ctx = AgentContext(db=db, user_id=uuid.UUID(user_id))
+    except (ValueError, AttributeError):
+        agent_ctx = AgentContext(db=db, user_id=uuid.UUID(int=0))
+
     async def event_generator():
         full_response: list[str] = []
         agent_name = "TriageAgent"
@@ -267,7 +278,7 @@ async def chat_stream(
         start = time.monotonic()
 
         try:
-            stream = Runner.run_streamed(triage_agent, agent_input, run_config=run_config, max_turns=10)
+            stream = Runner.run_streamed(triage_agent, agent_input, run_config=run_config, max_turns=10, context=agent_ctx)
             async for event in stream.stream_events():
                 # Check for client disconnect
                 if await request.is_disconnected():
@@ -323,10 +334,10 @@ async def chat_stream(
                 logger.warning("MaxTurnsExceeded in stream for session %s", chat_session.id)
                 yield {"data": json.dumps({"token": "I wasn't able to complete that in time. Could you simplify your request or try again?", "agent": agent_name})}
             elif "RateLimitError" in exc_name or "429" in str(e):
-                logger.warning("Rate limit hit in stream for session %s", chat_session.id)
+                logger.warning("Rate limit hit in stream for session %s — %s: %s", chat_session.id, exc_name, e)
                 yield {"data": json.dumps({"token": "I'm a bit busy right now — please wait a moment and try again. 🙏", "agent": agent_name})}
             else:
-                logger.error("Streaming agent error: %s", e, exc_info=True)
+                logger.error("Streaming agent error [%s]: %s", exc_name, e, exc_info=True)
                 yield {"data": json.dumps({"token": "I encountered an issue. Please try again.", "agent": "System"})}
 
         latency_ms = int((time.monotonic() - start) * 1000)

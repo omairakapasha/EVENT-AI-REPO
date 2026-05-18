@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     # Gemini / LLM
     gemini_api_key: str = ""
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
-    gemini_model: str = "gemini-2.5-flash"  # matches GEMINI_MODEL in .env
+    gemini_model: str = ""  # must be set via GEMINI_MODEL in .env (e.g. gemini-2.5-flash-lite)
 
     # Backend API
     backend_api_url: str = "http://localhost:5000/api/v1"
@@ -75,8 +75,8 @@ class Settings(BaseSettings):
     trulens_enabled: bool = False
     trulens_groundedness_threshold: float = 0.70
 
-    # Look for .env in the package dir first, then fall back to the monorepo root
-    model_config = SettingsConfigDict(env_file=(".env", "../../.env"), extra="ignore")
+    # Single source of truth — root .env only
+    model_config = SettingsConfigDict(env_file="../../.env", extra="ignore")
 
 
 @lru_cache

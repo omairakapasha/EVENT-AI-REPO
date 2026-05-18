@@ -1,34 +1,163 @@
-"""Event tools — async httpx, @function_tool, JSON string returns."""
+"""
+Event tools — direct SQLAlchemy DB access via RunContext[AgentContext].
+
+All five tools receive ctx: RunContext[AgentContext] as their first parameter.
+They use ctx.context.db for all reads/writes and ctx.context.user_id for
+ownership scoping.  No httpx calls.
+"""
+from __future__ import annotations
+
 import json
 import logging
-import os
-import httpx
+import uuid
+from datetime import datetime, timezone
 from typing import Optional
 
-from _agents_sdk import function_tool
+from agents import function_tool
+from agents.run_context import RunContextWrapper
+from sqlalchemy import select, update
+
+from services.agent_context import AgentContext
 
 logger = logging.getLogger(__name__)
 
+# Valid EventStatus values (mirrors backend EventStatus enum)
+_VALID_STATUSES = {"draft", "planned", "active", "completed", "canceled"}
+
+# ---------------------------------------------------------------------------
+# Alias map — maps every realistic LLM variation to the canonical DB name.
+# Used as a third-pass fallback when exact and partial matches both fail.
+# Keys are lowercase; values are the exact name stored in event_types.name.
+# ---------------------------------------------------------------------------
+_EVENT_TYPE_ALIASES: dict[str, str] = {
+    # Wedding & ceremonies
+    "wedding": "Wedding",
+    "nikah": "Wedding",
+    "nikkah": "Wedding",
+    "shaadi": "Wedding",
+    "shadi": "Wedding",
+    "marriage": "Wedding",
+    "wedding ceremony": "Wedding",
+    "wedding reception": "Wedding",
+    "wedding event": "Wedding",
+    # Mehndi
+    "mehndi": "Mehndi",
+    "mehendi": "Mehndi",
+    "henna": "Mehndi",
+    "henna night": "Mehndi",
+    "mehndi night": "Mehndi",
+    "mehndi ceremony": "Mehndi",
+    "mehndi function": "Mehndi",
+    # Baraat
+    "baraat": "Baraat",
+    "barat": "Baraat",
+    "baraat ceremony": "Baraat",
+    "barat ceremony": "Baraat",
+    "groom procession": "Baraat",
+    # Walima
+    "walima": "Walima",
+    "waleema": "Walima",
+    "walima reception": "Walima",
+    "walima dinner": "Walima",
+    "reception": "Walima",
+    # Birthday
+    "birthday": "Birthday Party",
+    "birthday party": "Birthday Party",
+    "birthday celebration": "Birthday Party",
+    "birthday event": "Birthday Party",
+    "bday": "Birthday Party",
+    "bday party": "Birthday Party",
+    "kids birthday": "Birthday Party",
+    "surprise party": "Birthday Party",
+    "anniversary": "Birthday Party",
+    "anniversary party": "Birthday Party",
+    # Corporate
+    "corporate": "Corporate",
+    "corporate event": "Corporate",
+    "corporate function": "Corporate",
+    "office event": "Corporate",
+    "office party": "Corporate",
+    "team building": "Corporate",
+    "team event": "Corporate",
+    "business event": "Corporate",
+    "company event": "Corporate",
+    "product launch": "Corporate",
+    "award ceremony": "Corporate",
+    "gala dinner": "Corporate",
+    "networking event": "Corporate",
+    "annual dinner": "Corporate",
+    "annual function": "Corporate",
+    # Conference
+    "conference": "Conference",
+    "seminar": "Conference",
+    "workshop": "Conference",
+    "summit": "Conference",
+    "symposium": "Conference",
+    "expo": "Conference",
+    "exhibition": "Conference",
+    "trade show": "Conference",
+    "webinar": "Conference",
+    "panel discussion": "Conference",
+    # Party
+    "party": "Party",
+    "social gathering": "Party",
+    "get together": "Party",
+    "get-together": "Party",
+    "gathering": "Party",
+    "celebration": "Party",
+    "farewell": "Party",
+    "farewell party": "Party",
+    "graduation party": "Party",
+    "graduation": "Party",
+    "house party": "Party",
+    "dinner party": "Party",
+    "lunch party": "Party",
+    "engagement party": "Party",
+    "engagement": "Party",
+    "baby shower": "Party",
+    "bridal shower": "Party",
+    "eid party": "Party",
+    "eid celebration": "Party",
+    "new year party": "Party",
+    "new year": "Party",
+    "halloween party": "Party",
+    "christmas party": "Party",
+}
+
+
+def _resolve_event_type_alias(event_type: str) -> str | None:
+    """Return the canonical DB name for a given event type string, or None."""
+    return _EVENT_TYPE_ALIASES.get(event_type.strip().lower())
+
+
+def _err(msg: str) -> str:
+    return json.dumps({"success": False, "error": msg})
+
 
 @function_tool
-async def get_user_events(user_id: str) -> str:
-    """Get all events for the current user.
-    Returns a JSON string with list of events."""
+async def query_event_types(ctx: RunContextWrapper[AgentContext]) -> str:
+    """Get the list of supported event types on the platform.
+    Returns a JSON string with available event types and their real UUIDs."""
     try:
-        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:5000/api/v1")
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(f"{backend_url}/events", params={"userId": user_id})
-            if resp.status_code == 200:
-                data = resp.json()
-                events = data.get("data", {}).get("items", data.get("events", []))
-                return json.dumps({"events": events, "total": len(events)})
-            return json.dumps({"events": [], "error": f"HTTP {resp.status_code}"})
+        from sqlalchemy import text as sa_text
+        db = ctx.context.db
+        result = await db.execute(
+            sa_text("SELECT id, name, description FROM event_types WHERE is_active = 1 OR is_active = true ORDER BY display_order ASC")
+        )
+        rows = result.fetchall()
+        event_types = [
+            {"id": str(row.id), "name": row.name, "description": row.description or ""}
+            for row in rows
+        ]
+        return json.dumps({"event_types": event_types})
     except Exception as e:
-        return json.dumps({"error": str(e), "events": []})
+        logger.error("query_event_types error: %s", e)
+        return json.dumps({"event_types": [], "error": str(e)})
 
 
 @function_tool
 async def create_event(
+    ctx: RunContextWrapper[AgentContext],
     event_type: str,
     event_name: str,
     event_date: str,
@@ -38,80 +167,249 @@ async def create_event(
     preferences: str = "",
 ) -> str:
     """Create a new event for planning.
-    event_type must be one of: wedding, birthday, corporate, mehndi, conference, party.
+    event_type accepts any common name or alias, e.g.:
+      'Wedding', 'Nikah', 'Shaadi', 'Mehndi', 'Henna', 'Baraat', 'Barat',
+      'Walima', 'Reception', 'Birthday', 'Birthday Party', 'Anniversary',
+      'Corporate', 'Team Building', 'Annual Dinner', 'Conference', 'Seminar',
+      'Workshop', 'Party', 'Gathering', 'Engagement', 'Graduation', etc.
     Returns a JSON string with the created event ID and details."""
     try:
-        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:5000/api/v1")
-        prefs = [p.strip() for p in preferences.split(",") if p.strip()] if preferences else []
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.post(
-                f"{backend_url}/events",
-                json={
-                    "eventType": event_type,
-                    "eventName": event_name,
-                    "eventDate": event_date,
-                    "location": location,
-                    "attendees": max(0, attendee_count),
-                    "budget": max(0, budget_pkr),
-                    "preferences": prefs,
-                },
+        from sqlalchemy import text as sa_text
+        db = ctx.context.db
+        user_id = ctx.context.user_id
+
+        # Resolve event_type name → UUID (three-pass lookup)
+        # Pass 1: exact case-insensitive match
+        et_result = await db.execute(
+            sa_text(
+                "SELECT id, name FROM event_types "
+                "WHERE LOWER(name) = LOWER(:name) AND (is_active = 1 OR is_active = true) "
+                "LIMIT 1"
+            ),
+            {"name": event_type.strip()},
+        )
+        et_row = et_result.fetchone()
+
+        # Pass 2: partial/contains match (e.g. "birthday" → "Birthday Party")
+        if not et_row:
+            et_result = await db.execute(
+                sa_text(
+                    "SELECT id, name FROM event_types "
+                    "WHERE LOWER(name) LIKE LOWER(:pattern) AND (is_active = 1 OR is_active = true) "
+                    "ORDER BY display_order ASC LIMIT 1"
+                ),
+                {"pattern": f"%{event_type.strip()}%"},
             )
-            if resp.status_code in (200, 201):
-                data = resp.json()
-                event = data.get("data", data.get("event", {}))
-                return json.dumps({"success": True, "event_id": str(event.get("id", "")), "event": event})
-            error = resp.json().get("message", f"HTTP {resp.status_code}")
-            return json.dumps({"success": False, "error": error})
+            et_row = et_result.fetchone()
+
+        # Pass 3: alias map (e.g. "nikah" → "Wedding", "team building" → "Corporate")
+        if not et_row:
+            canonical = _resolve_event_type_alias(event_type)
+            if canonical:
+                et_result = await db.execute(
+                    sa_text(
+                        "SELECT id, name FROM event_types "
+                        "WHERE LOWER(name) = LOWER(:name) AND (is_active = 1 OR is_active = true) "
+                        "LIMIT 1"
+                    ),
+                    {"name": canonical},
+                )
+                et_row = et_result.fetchone()
+
+        if not et_row:
+            # List available types so the agent can recover
+            all_types = await db.execute(
+                sa_text("SELECT name FROM event_types WHERE is_active = 1 OR is_active = true ORDER BY display_order ASC")
+            )
+            available = [r.name for r in all_types.fetchall()]
+            return _err(
+                f"Unknown event type '{event_type}'. "
+                f"Available types: {', '.join(available) if available else 'none — run seed script first'}. "
+                "Use query_event_types to see available types."
+            )
+        event_type_id = str(et_row.id)
+
+        # Parse event_date → timezone-aware datetime
+        try:
+            if "T" in event_date:
+                start_date = datetime.fromisoformat(event_date)
+            else:
+                start_date = datetime.strptime(event_date, "%Y-%m-%d").replace(
+                    tzinfo=timezone.utc
+                )
+            if start_date.tzinfo is None:
+                start_date = start_date.replace(tzinfo=timezone.utc)
+        except ValueError:
+            return _err(f"Invalid event_date '{event_date}'. Use ISO format: YYYY-MM-DD.")
+
+        event_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc)
+
+        await db.execute(
+            sa_text(
+                "INSERT INTO events "
+                "(id, user_id, event_type_id, name, start_date, city, guest_count, "
+                " budget, status, country, timezone, created_at, updated_at) "
+                "VALUES (:id, :user_id, :event_type_id, :name, :start_date, :city, "
+                "        :guest_count, :budget, :status, :country, :timezone, :created_at, :updated_at)"
+            ),
+            {
+                "id": event_id,
+                "user_id": str(user_id),
+                "event_type_id": event_type_id,
+                "name": event_name,
+                "start_date": start_date,
+                "city": location or None,
+                "guest_count": max(0, attendee_count) or None,
+                "budget": max(0.0, budget_pkr) or None,
+                "status": "draft",
+                "country": "Pakistan",
+                "timezone": "Asia/Karachi",
+                "created_at": now,
+                "updated_at": now,
+            },
+        )
+        await db.flush()
+        await db.commit()
+
+        return json.dumps({
+            "success": True,
+            "event_id": event_id,
+            "event": {
+                "id": event_id,
+                "name": event_name,
+                "event_type": et_row.name,
+                "start_date": start_date.isoformat(),
+                "city": location or None,
+                "guest_count": max(0, attendee_count) or None,
+                "budget": max(0.0, budget_pkr) or None,
+                "status": "draft",
+            },
+        })
     except Exception as e:
-        return json.dumps({"success": False, "error": str(e)})
+        logger.error("create_event error: %s", e)
+        return _err(str(e))
 
 
 @function_tool
-async def get_event_details(event_id: str) -> str:
-    """Get full details of a specific event including linked vendors and status.
+async def get_user_events(ctx: RunContextWrapper[AgentContext]) -> str:
+    """Get all events for the current user.
+    Returns a JSON string with list of events."""
+    try:
+        from sqlalchemy import text as sa_text
+        db = ctx.context.db
+        user_id = ctx.context.user_id
+
+        result = await db.execute(
+            sa_text(
+                "SELECT id, name, status, start_date, city, guest_count, budget "
+                "FROM events WHERE user_id = :user_id ORDER BY created_at DESC"
+            ),
+            {"user_id": str(user_id)},
+        )
+        rows = result.fetchall()
+        events = [
+            {
+                "id": str(row.id),
+                "name": row.name,
+                "status": row.status,
+                "start_date": str(row.start_date) if row.start_date else None,
+                "city": row.city,
+                "guest_count": row.guest_count,
+                "budget": row.budget,
+                "user_id": str(user_id),
+            }
+            for row in rows
+        ]
+        return json.dumps({"events": events, "total": len(events)})
+    except Exception as e:
+        logger.error("get_user_events error: %s", e)
+        return json.dumps({"events": [], "error": str(e)})
+
+
+@function_tool
+async def get_event_details(
+    ctx: RunContextWrapper[AgentContext],
+    event_id: str,
+) -> str:
+    """Get full details of a specific event.
     Returns a JSON string with complete event details."""
     try:
-        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:5000/api/v1")
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(f"{backend_url}/events/{event_id}")
-            if resp.status_code == 200:
-                return json.dumps(resp.json().get("data", resp.json().get("event", {})))
-            return json.dumps({"error": f"Event {event_id} not found"})
+        from sqlalchemy import text as sa_text
+        db = ctx.context.db
+        user_id = ctx.context.user_id
+
+        result = await db.execute(
+            sa_text(
+                "SELECT id, user_id, event_type_id, name, status, start_date, "
+                "       city, guest_count, budget, description "
+                "FROM events WHERE id = :event_id AND user_id = :user_id LIMIT 1"
+            ),
+            {"event_id": event_id, "user_id": str(user_id)},
+        )
+        row = result.fetchone()
+        if not row:
+            return _err(f"Event {event_id} not found or does not belong to you.")
+
+        return json.dumps({
+            "id": str(row.id),
+            "user_id": str(row.user_id),
+            "event_type_id": str(row.event_type_id),
+            "name": row.name,
+            "status": row.status,
+            "start_date": str(row.start_date) if row.start_date else None,
+            "city": row.city,
+            "guest_count": row.guest_count,
+            "budget": row.budget,
+            "description": row.description,
+        })
     except Exception as e:
-        return json.dumps({"error": str(e)})
+        logger.error("get_event_details error: %s", e)
+        return _err(str(e))
 
 
 @function_tool
-async def update_event_status(event_id: str, status: str) -> str:
+async def update_event_status(
+    ctx: RunContextWrapper[AgentContext],
+    event_id: str,
+    status: str,
+) -> str:
     """Update the status of an event.
-    status must be one of: draft, planning, quoted, approved, confirmed, completed, cancelled.
+    status must be one of: draft, planned, active, completed, canceled.
     Returns a JSON string with update result."""
     try:
-        backend_url = os.getenv("BACKEND_API_URL", "http://localhost:5000/api/v1")
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.patch(
-                f"{backend_url}/events/{event_id}/status",
-                json={"status": status},
+        from sqlalchemy import text as sa_text
+        db = ctx.context.db
+        user_id = ctx.context.user_id
+
+        # Validate status
+        normalized = status.strip().lower()
+        if normalized not in _VALID_STATUSES:
+            return _err(
+                f"Invalid status '{status}'. "
+                f"Must be one of: {', '.join(sorted(_VALID_STATUSES))}."
             )
-            if resp.status_code == 200:
-                return json.dumps({"success": True, "event_id": event_id, "status": status})
-            error = resp.json().get("message", f"HTTP {resp.status_code}")
-            return json.dumps({"success": False, "error": error})
+
+        # Verify ownership
+        check = await db.execute(
+            sa_text("SELECT id FROM events WHERE id = :event_id AND user_id = :user_id LIMIT 1"),
+            {"event_id": event_id, "user_id": str(user_id)},
+        )
+        if not check.fetchone():
+            return _err(f"Event {event_id} not found or does not belong to you.")
+
+        now = datetime.now(timezone.utc)
+        await db.execute(
+            sa_text(
+                "UPDATE events SET status = :status, updated_at = :updated_at "
+                "WHERE id = :event_id AND user_id = :user_id"
+            ),
+            {"status": normalized, "updated_at": now, "event_id": event_id, "user_id": str(user_id)},
+        )
+        await db.flush()
+        await db.commit()
+
+        return json.dumps({"success": True, "event_id": event_id, "status": normalized})
     except Exception as e:
-        return json.dumps({"success": False, "error": str(e)})
-
-
-@function_tool
-async def query_event_types() -> str:
-    """Get the list of supported event types on the platform.
-    Returns a JSON string with available event types."""
-    return json.dumps({
-        "event_types": [
-            {"id": "wedding", "name": "Wedding", "description": "Nikah, baraat, walima ceremonies"},
-            {"id": "mehndi", "name": "Mehndi", "description": "Mehndi/henna ceremony"},
-            {"id": "birthday", "name": "Birthday Party", "description": "Birthday celebrations"},
-            {"id": "corporate", "name": "Corporate Event", "description": "Business meetings, conferences, team events"},
-            {"id": "conference", "name": "Conference", "description": "Large-scale conferences and seminars"},
-            {"id": "party", "name": "Party", "description": "General parties and social gatherings"},
-        ]
-    })
+        logger.error("update_event_status error: %s", e)
+        return _err(str(e))

@@ -5,19 +5,19 @@ description = "AI Agent Orchestrator for Event Management"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi",
-    "uvicorn[standard]",
-    "openai-agents",
-    "openai",
-    "httpx",
+    "fastapi>=0.136.1",
+    "uvicorn[standard]>=0.47.0",
+    "openai-agents>=0.17.2",
+    "openai>=2.37.0",
+    "httpx>=0.28.1",
     "asyncpg>=0.31.0",
     "sqlmodel>=0.0.38",
     "alembic>=1.18.4",
-    "pydantic>=2.0",
-    "pydantic-settings",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.1",
     "pyyaml>=6.0",
-    "sse-starlette>=1.6.1",
-    "mem0ai",
+    "sse-starlette>=3.4.4",
+    "mem0ai>=2.0.2",
     "scikit-learn>=1.4.0",
     # sentence-transformers is optional (Layer 5 semantic similarity)
     # adds ~80MB model download on first use, CPU-only, no CUDA needed
@@ -26,11 +26,17 @@ dependencies = [
     # Re-add when running on GPU-enabled infra: "llamafirewall>=0.1.0"
 ]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest",
     "pytest-asyncio",
+    "aiosqlite",
     "respx",
     "hypothesis",
     "ruff",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]

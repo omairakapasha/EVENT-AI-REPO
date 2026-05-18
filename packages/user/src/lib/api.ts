@@ -67,7 +67,9 @@ api.interceptors.response.use(
 
 // Vendor API - public vendor discovery
 export const getVendors = async (params?: { category?: string; search?: string }) => {
-    const response = await api.get("/public_vendors/", { params: { q: params?.search, ...params } });
+    // Backend accepts `q` for text search; category filtering is done client-side
+    // since the backend expects category_ids (UUIDs), not category name strings
+    const response = await api.get("/public_vendors/", { params: { q: params?.search || undefined } });
     return response.data;
 };
 
