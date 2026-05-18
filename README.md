@@ -1,172 +1,228 @@
-<p align="center">
-  <h1 align="center">Event-AI</h1>
-  <p align="center">Intelligent Event Planning Marketplace for Pakistan</p>
-  <p align="center">
-    <img src="https://img.shields.io/badge/Python-3.13+-blue?logo=python&logoColor=white" alt="Python 3.13" />
-    <img src="https://img.shields.io/badge/FastAPI-0.135-009688?logo=fastapi&logoColor=white" alt="FastAPI" />
-    <img src="https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white" alt="Next.js 16" />
-    <img src="https://img.shields.io/badge/PostgreSQL-pgvector-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
-    <img src="https://img.shields.io/badge/pnpm-9.0.0-F69220?logo=pnpm&logoColor=white" alt="pnpm" />
-    <img src="https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white" alt="Docker" />
-  </p>
-</p>
+<div align="center">
+
+# Event-AI
+
+**AI-native event planning marketplace for Pakistan**
+
+Connect users with verified vendors through intelligent multi-agent orchestration, semantic search, and real-time coordination.
+
+[![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.136-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)](https://nextjs.org)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+[Overview](#overview) · [Quick Start](#quick-start) · [Architecture](#architecture) · [API Reference](#api-reference) · [Contributing](#contributing)
+
+</div>
 
 ---
 
-## 🌟 Overview
+## Overview
 
-**Event-AI** is a sophisticated, AI-native marketplace platform designed to revolutionize event planning in Pakistan. It connects users with verified vendors for weddings, corporate events, and parties through a multi-agent AI system and semantic search capabilities.
+Event-AI is a full-stack marketplace that makes event planning in Pakistan fast, intelligent, and transparent. Users describe what they need — a wedding venue, a catering team, a photographer — and an AI agent pipeline handles discovery, comparison, and booking coordination end-to-end.
 
-Built as a high-performance monorepo, the platform features a robust FastAPI backend, an advanced AI orchestrator, and three specialized Next.js portals for users, vendors, and administrators.
+**What makes it different:**
 
----
-
-## 🏗️ Architecture
-
-The project is organized as a **Turborepo** monorepo, separating concerns across specialized packages:
-
-```text
-C:\Users\omair\OneDrive\Desktop\Event\
-├── packages/
-│   ├── backend/                     # FastAPI REST API (Auth, Bookings, Events)
-│   ├── agentic_event_orchestrator/  # AI Agent Service (Triage, Planning, Discovery)
-│   ├── user/                        # User Portal (Next.js 16) — AI Chat & Discovery
-│   ├── vendor/                      # Vendor Portal (Next.js 16) — Booking & Service Mgmt
-│   ├── admin/                       # Admin Portal (Next.js 16) — Platform Moderation
-│   └── ui/                          # Shared Design System (Tailwind v4)
-├── infra/                           # Docker and Nginx configurations
-├── specs/                           # Technical specifications and architectural docs
-└── docker-compose.yml               # Full-stack orchestration
-```
-
-### Port Map
-
-| Service | Dev Port | Docker Port |
-|---------|----------|-------------|
-| **Backend API** | 5000 | 5000 |
-| **AI Orchestrator** | 8000 | 8000 |
-| **User Portal** | 3003 | 3000 |
-| **Vendor Portal** | 3002 | 3001 |
-| **Admin Portal** | 3004 | 3004 |
+- A **multi-agent AI system** (Triage → Planner → Discovery → Booking) that understands intent and acts on it
+- **Hybrid semantic search** combining pgvector similarity with trigram keyword matching for precise vendor discovery
+- **Three specialized portals** — one each for users, vendors, and platform administrators
+- **Production-grade security** — 7-layer prompt injection firewall, canary token leak detection, JWT rotation
 
 ---
 
-## 🛠️ Tech Stack
-
-- **Backend:** Python 3.13, FastAPI, SQLModel, PostgreSQL (Neon) + `pgvector`.
-- **AI Service:** OpenAI Agents SDK, Gemini (via OpenAI-compatible endpoint), Mem0.
-- **Frontend:** Next.js 16, React 19, Tailwind CSS v4, React Query, SSE.
-- **Infrastructure:** Turborepo, pnpm, Docker, uv (Python pkg mgr).
-- **Security:** 7-layer Prompt Firewall, JWT Rotation, Google OAuth2, PII Redaction.
-
----
-
-## 🚀 Getting Started
+## Quick Start
 
 ### Prerequisites
 
-- **Node.js** >= 20.0.0
-- **pnpm** >= 9.0.0
-- **Python** >= 3.13
-- **uv** (for Python dependency management)
-- **Docker** & **Docker Compose**
+| Tool | Version |
+|---|---|
+| Node.js | ≥ 20 |
+| pnpm | ≥ 9 |
+| Python | ≥ 3.13 |
+| [uv](https://docs.astral.sh/uv/) | latest |
+| Docker | optional |
 
-### 1. Environment Setup
-
-Copy `.env.example` to `.env` in the root and fill in the required keys:
+### 1. Clone and configure
 
 ```bash
-# Root directory
+git clone https://github.com/your-org/event-ai.git
+cd event-ai
 cp .env.example .env
 ```
 
-Key variables needed: `DATABASE_URL`, `JWT_SECRET_KEY`, `GEMINI_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+Edit `.env` and fill in:
 
-### 2. Installation
+```
+DATABASE_URL=        # Neon PostgreSQL pooled URL
+DIRECT_URL=          # Neon PostgreSQL direct URL (Alembic only)
+JWT_SECRET_KEY=      # min 32 chars
+GEMINI_API_KEY=      # from Google AI Studio
+GEMINI_MODEL=        # e.g. gemini-2.5-flash-lite
+GOOGLE_CLIENT_ID=    # Google OAuth2
+GOOGLE_CLIENT_SECRET=
+```
 
-Install Node and Python dependencies:
+### 2. Install
 
 ```bash
-# Install Node dependencies
 pnpm install
-
-# Install Python dependencies (Backend)
 cd packages/backend && uv sync && cd ../..
-
-# Install Python dependencies (AI Service)
 cd packages/agentic_event_orchestrator && uv sync && cd ../..
 ```
 
-### 3. Database & Migrations
+### 3. Migrate and run
 
 ```bash
-# Start local database (optional if using Neon)
-pnpm db:up
+# Apply database migrations
+cd packages/backend && uv run alembic upgrade head && cd ../..
 
-# Run migrations
-pnpm db:migrate:dev
-```
-
-### 4. Running the Project
-
-**Using Docker (Recommended):**
-```bash
+# Start everything
 docker compose up --build
 ```
 
-**Native Development:**
+Or run services individually:
+
 ```bash
-# Run all portals (User, Vendor, Admin)
+# Terminal 1 — Frontend portals
 pnpm dev
 
-# Run Backend (in a separate terminal)
+# Terminal 2 — Backend API (port 5000)
 cd packages/backend
 uv run uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload
 
-# Run AI Orchestrator (in a separate terminal)
+# Terminal 3 — AI Orchestrator (port 8000)
 cd packages/agentic_event_orchestrator
 uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ---
 
-## 🧩 Key Features
+## Architecture
 
-- **Multi-Agent AI Orchestrator:** Intelligent agents (Triage, Planner, Discovery, Booking) that collaborate to fulfill user requests.
-- **Hybrid Semantic Search:** Combines Trigram keyword search with `pgvector` similarity search for highly relevant vendor discovery.
-- **Real-time Notifications:** SSE-powered live updates for bookings, status changes, and messages.
-- **Advanced Security:** Production-grade 7-layer prompt injection firewall and output leak detection.
-- **Vendor Workflow:** Complete lifecycle management from registration and approval to service listing and booking confirmation.
-- **Admin Insights:** Comprehensive dashboard for platform statistics, user management, and vendor moderation.
+Event-AI is a **Turborepo monorepo** with clear package boundaries:
+
+```
+event-ai/
+├── packages/
+│   ├── backend/                     # FastAPI REST API
+│   ├── agentic_event_orchestrator/  # AI agent service
+│   ├── user/                        # User portal — Next.js 16
+│   ├── vendor/                      # Vendor portal — Next.js 16
+│   ├── admin/                       # Admin portal — Next.js 16
+│   └── ui/                          # Shared component library
+├── docker-compose.yml
+└── turbo.json
+```
+
+### Service ports
+
+| Service | Dev | Docker |
+|---|---|---|
+| Backend API | 5000 | 5000 |
+| AI Orchestrator | 8000 | 8000 |
+| User Portal | 3003 | 3000 |
+| Vendor Portal | 3002 | 3001 |
+| Admin Portal | 3004 | 3004 |
+
+### AI agent pipeline
+
+All requests enter through a single `TriageAgent` and are routed to specialist agents:
+
+```
+User message
+      │
+      ▼
+ TriageAgent ──────────────────────────────┐
+      │                                    │
+      ▼                                    ▼
+ EventPlannerAgent              VendorDiscoveryAgent
+                                          │
+                                          ▼
+                                    BookingAgent
+                                          │
+                                          ▼
+                                  OrchestratorAgent
+                               (multi-step coordination)
+```
+
+Each agent has access to typed function tools: `vendor_tools`, `booking_tools`, `event_tools`, `approval_tools`, `scheduler_tools`, `mail_tools`.
+
+### Tech stack
+
+| Layer | Stack |
+|---|---|
+| Backend | Python 3.13, FastAPI, SQLModel, asyncpg |
+| Database | PostgreSQL (Neon) + pgvector, Alembic |
+| AI | OpenAI Agents SDK, Gemini via OpenAI-compatible endpoint, Mem0 |
+| Frontend | Next.js 16, React 19, Tailwind CSS v4, React Query |
+| Auth | Custom JWT (HS256), Google OAuth2, refresh token rotation |
+| Real-time | Server-Sent Events (SSE) |
+| Tooling | Turborepo, pnpm, uv, Docker, Ruff |
 
 ---
 
-## 🧪 Testing
+## API Reference
 
-The project maintains a high test coverage across backend and frontend:
+All backend routes are versioned under `/api/v1/`.
 
-```bash
-# Backend Tests (FastAPI)
-cd packages/backend
-uv run pytest
+| Prefix | Description |
+|---|---|
+| `/api/v1/auth` | Register, login, refresh, logout, Google OAuth |
+| `/api/v1/users` | User profile |
+| `/api/v1/vendors` | Vendor CRUD, services, availability |
+| `/api/v1/public_vendors` | Public vendor discovery (no auth) |
+| `/api/v1/bookings` | Booking lifecycle |
+| `/api/v1/events` | Event management |
+| `/api/v1/services` | Vendor service listings |
+| `/api/v1/categories` | Service categories |
+| `/api/v1/inquiries` | Vendor inquiries |
+| `/api/v1/uploads` | File uploads |
+| `/api/v1/notifications` | Notifications + preferences |
+| `/api/v1/sse` | Real-time event stream |
+| `/api/v1/admin/*` | Platform stats, moderation, AI chat logs |
+| `/api/v1/ai/chat` | AI chat — non-streaming |
+| `/api/v1/ai/chat/stream` | AI chat — SSE streaming |
+| `/api/v1/ai/feedback` | Message feedback |
+| `/api/v1/ai/memory` | Per-user persistent memory |
 
-# Frontend Typecheck
-pnpm typecheck
+**Response envelope:**
 
-# Linting
-pnpm lint
+```json
+{ "success": true, "data": {}, "meta": {} }
+{ "success": false, "error": { "code": "ERROR_CODE", "message": "..." } }
 ```
 
 ---
 
-## 📖 Documentation
+## Testing
 
-- [Project Status](PROJECT_STATUS.md) - Detailed current build progress.
-- [AI System](packages/agentic_event_orchestrator/README.md) - Deep dive into agent architecture.
-- [Windows Guide](README-WINDOWS.md) - Setup instructions for Windows users.
+```bash
+# Backend
+cd packages/backend
+uv run pytest
+
+# AI orchestrator
+cd packages/agentic_event_orchestrator
+uv run pytest
+
+# Frontend
+pnpm typecheck
+pnpm lint
+```
+
+Tests run against an in-memory SQLite database — no external services required.
 
 ---
 
-## 📄 License
+## Contributing
+
+1. Branch from `develop`: `feature/<name>` or `hotfix/<name>`
+2. Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat(backend): ...`, `fix(user): ...`
+3. All CI checks must pass before merge (lint, typecheck, pytest)
+4. PRs target `develop`, never `main`
+
+---
+
+## License
 
 MIT © 2026 Event-AI Team
