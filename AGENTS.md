@@ -16,7 +16,7 @@
 | `packages/vendor` | Vendor portal — onboarding, service management, bookings |
 | `packages/admin` | Admin portal — moderation, approvals, analytics |
 | `packages/backend` | REST API — auth, bookings, events, payments, business logic |
-| `packages/agentic_event_orchestrator` | AI service — agents, Agentic RAG, MCP tools |
+| `packages/agentic_event_orchestrator` | AI service — agents, Agentic RAG, REST/httpx tools |
 | `packages/ui` | Shared design system and reusable components |
 
 ---
@@ -46,7 +46,7 @@
 - FastAPI + OpenAI Agents SDK
 - Gemini via LiteLLM (`gemini/gemini-3-flash-preview`)
 - LangChain — **Agentic RAG only** (never for orchestration)
-- Mem0 (per-user persistent memory), MCP Protocol, SSE / sse-starlette
+- Mem0 (per-user persistent memory), SSE / sse-starlette
 
 ### Frontend (all portals)
 - Next.js 15, TypeScript (strict), Tailwind CSS, shadcn/ui, React Query
@@ -135,7 +135,7 @@ Event-AI/
 ### AI / Agentic layer
 - `TriageAgent` is the sole entry point for all agent interactions
 - All external actions wrapped in `@function_tool` with a docstring
-- MCP tools are **read-only**; writes go through the backend REST API
+- All agent-to-backend calls go through REST/httpx with `AI_SERVICE_API_KEY`
 - LangChain used **only** for Agentic RAG pipelines
 - OpenAI Agents SDK used **only** for orchestration
 - Require user confirmation before any destructive agent action
@@ -411,7 +411,6 @@ class TestMyFeature:
 - New rate limiters must be added to `client` fixture overrides
 - Never assert exact token values — assert presence and structure only
 - Zero real LLM calls in tests — mock with `respx`
-- Zero real MCP calls in tests — mock with `respx` or subprocess mock
 
 ---
 
@@ -487,7 +486,7 @@ uv run alembic history --verbose
 - **Embedding staleness:** `upsert_vendor_embedding` uses SHA-256 of canonical vendor text — Gemini is only called when content changes
 
 ### Banned Practices
-`NextAuth` · `Auth0` · `Clerk` · `Firebase Auth` · `localStorage JWT` · `sessionStorage JWT` · `sys.path.insert` · `nest_asyncio` · `npm` · `pip` · direct AI DB writes · real LLM/MCP calls in tests · LangChain for orchestration · raw `os.environ`
+`NextAuth` · `Auth0` · `Clerk` · `Firebase Auth` · `localStorage JWT` · `sessionStorage JWT` · `sys.path.insert` · `nest_asyncio` · `npm` · `pip` · direct AI DB writes · real LLM calls in tests · LangChain for orchestration · raw `os.environ`
 
 ---
 

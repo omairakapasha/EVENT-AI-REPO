@@ -145,7 +145,7 @@ User message
                                (multi-step coordination)
 ```
 
-Each agent has access to typed function tools: `vendor_tools`, `booking_tools`, `event_tools`, `approval_tools`, `scheduler_tools`, `mail_tools`.
+Each agent has access to typed function tools: `vendor_tools`, `booking_tools`, `event_tools`, `notification_tools`, `mail_tools`.
 
 ### Tech stack
 

@@ -25,7 +25,7 @@ Traditional event planning is fragmented across disconnected workflows — disco
 | `packages/vendor` | Vendor portal — onboarding, service management, bookings |
 | `packages/admin` | Admin portal — moderation, approvals, analytics |
 | `packages/backend` | REST API — auth, bookings, events, payments, business logic |
-| `packages/agentic_event_orchestrator` | AI service — agents, Agentic RAG, MCP tools |
+| `packages/agentic_event_orchestrator` | AI service — agents, Agentic RAG, REST/httpx tools |
 | `packages/ui` | Shared design system and reusable components |
 
 ---
@@ -49,7 +49,7 @@ Traditional event planning is fragmented across disconnected workflows — disco
 - FastAPI + **OpenAI Agents SDK**
 - **Gemini** (OpenAI-compatible endpoint)
 - **LangChain** (Agentic RAG pipelines only)
-- **Mem0** (memory), **MCP Protocol**, **SSE** / sse-starlette
+- **Mem0** (memory), **SSE** / sse-starlette
 
 ### Frontend (all portals)
 - **Next.js 15**, **TypeScript** (strict mode)
@@ -143,7 +143,7 @@ Event-AI/
 ### AI / Agentic layer
 - `TriageAgent` is the sole entry point for all agent interactions
 - All external actions wrapped in `@function_tool`
-- MCP tools are **read-only**
+- All agent-to-backend calls go through REST/httpx with `AI_SERVICE_API_KEY`
 - LangChain used **only** for Agentic RAG pipelines
 - OpenAI Agents SDK used **only** for orchestration
 - Require user confirmation before any destructive agent action
@@ -202,8 +202,7 @@ main
 
 ### Testing constraints
 - **Zero** real LLM calls in tests — always mock
-- **Zero** real MCP calls in tests — always mock
-- Mock all external HTTP with `respx`
+- Mock all external HTTP (including agent-to-backend calls) with `respx`
 - Test `middleware/auth.py` directly and test decorator enforcement
 - Test migration integrity in `test_migrations/`
 
@@ -270,13 +269,13 @@ Optional: `SMTP_*` (email), `GOOGLE_CLIENT_*` (OAuth), `S3_*` (file uploads), `R
 | `GEMINI_API_KEY` | Google AI key restricted to Generative Language API |
 | `AI_SERVICE_API_KEY` | 32+ byte random token for service-to-service auth |
 | `SERVICE_SECRET` | Must match `AGENT_SERVICE_SECRET` in backend `.env` |
-| `BACKEND_API_URL` | `http://localhost:3001/api/v1` for local dev |
+| `BACKEND_API_URL` | `http://localhost:5000/api/v1` for local dev |
 | `CORS_ORIGINS` | Comma-separated allowed origins |
 
 ### Port map
 | Service | Port |
 |---|---|
-| Backend API | `3001` |
+| Backend API | `5000` |
 | User portal | `3003` |
 | Vendor portal | `3002` |
 | Admin portal | `3004` |
@@ -773,7 +772,7 @@ All HTTP calls go through a single **axios** instance:
 import { api } from "@/lib/api";
 
 // api is pre-configured with:
-//   baseURL = NEXT_PUBLIC_API_URL  (defaults to http://localhost:3001/api/v1)
+//   baseURL = NEXT_PUBLIC_API_URL  (defaults to http://localhost:5000/api/v1)
 //   request interceptor  → attaches Bearer token from localStorage
 //   response interceptor → clears auth and redirects to /login on 401
 ```
