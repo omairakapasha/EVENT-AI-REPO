@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Send, Loader2 } from 'lucide-react';
+import { ArrowLeft, Send, Loader2, Check, X } from 'lucide-react';
 import { VendorLayout } from '@/components/vendor-layout';
 import { useBookingDetail, useBookingMessages, useSendMessage } from '@/lib/hooks/use-booking-detail';
+import { useConfirmBooking, useRejectBooking } from '@/lib/hooks/use-vendor-bookings';
 import { useAuthStore } from '@/lib/auth-store';
 import { cn, formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 
@@ -23,11 +24,15 @@ export default function BookingDetailPage() {
     const router = useRouter();
     const { vendor } = useAuthStore();
     const [message, setMessage] = useState('');
+    const [rejectOpen, setRejectOpen] = useState(false);
+    const [rejectReason, setRejectReason] = useState('');
     const bottomRef = useRef<HTMLDivElement>(null);
 
     const { data: booking, isLoading: loadingBooking } = useBookingDetail(id);
     const { data: messages = [], isLoading: loadingMessages } = useBookingMessages(id);
     const send = useSendMessage(id);
+    const confirm = useConfirmBooking();
+    const reject = useRejectBooking();
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -93,6 +98,27 @@ export default function BookingDetailPage() {
                                     </div>
                                 )}
                             </dl>
+
+                            {booking.status === 'pending' && (
+                                <div className="mt-6 flex flex-col gap-2 border-t border-surface-200 pt-4 dark:border-surface-800">
+                                    <button
+                                        onClick={() => confirm.mutate(booking.id)}
+                                        disabled={confirm.isPending}
+                                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                                    >
+                                        {confirm.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                        Confirm Booking
+                                    </button>
+                                    <button
+                                        onClick={() => setRejectOpen(true)}
+                                        disabled={reject.isPending}
+                                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                                    >
+                                        <X className="h-4 w-4" />
+                                        Reject Booking
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         {/* Messages thread */}
@@ -153,6 +179,36 @@ export default function BookingDetailPage() {
                     </div>
                 )}
             </div>
+            {rejectOpen && booking && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                    <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-surface-900">
+                        <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-50">Reject Booking</h3>
+                        <p className="mt-1 text-sm text-surface-500">Optionally provide a reason for the customer.</p>
+                        <textarea
+                            value={rejectReason}
+                            onChange={(e) => setRejectReason(e.target.value)}
+                            placeholder="Reason (optional)"
+                            rows={3}
+                            className="mt-4 w-full rounded-lg border border-surface-300 p-3 text-sm focus:border-primary-500 focus:outline-none dark:border-surface-700 dark:bg-surface-800"
+                        />
+                        <div className="mt-4 flex justify-end gap-3">
+                            <button onClick={() => setRejectOpen(false)} className="rounded-lg border border-surface-300 px-4 py-2 text-sm hover:bg-surface-50">Cancel</button>
+                            <button
+                                onClick={async () => {
+                                    await reject.mutateAsync({ bookingId: booking.id, reason: rejectReason || undefined });
+                                    setRejectOpen(false);
+                                    setRejectReason('');
+                                }}
+                                disabled={reject.isPending}
+                                className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-50"
+                            >
+                                {reject.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Reject
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </VendorLayout>
     );
 }

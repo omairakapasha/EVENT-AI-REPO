@@ -23,24 +23,34 @@ export function useSSE(enabled: boolean = true) {
         const es = new EventSource(url);
         esRef.current = es;
 
-        es.addEventListener('booking.created', () => {
-            toast('New booking request received', { icon: '📅' });
+        // Backend pushes a single "notification" SSE event for all domain events
+        // (booking.created, booking.confirmed, booking.cancelled, etc.).
+        // Payload shape: NotificationRead — { id, user_id, title, body, type, data, ... }
+        es.addEventListener('notification', (event) => {
+            let payload: { title?: string; body?: string; type?: string } = {};
+            try {
+                payload = JSON.parse((event as MessageEvent).data);
+            } catch {
+                // ignore malformed payload — still invalidate queries below
+            }
+
+            const type = payload.type ?? '';
+            const title = payload.title || 'New notification';
+            if (type === 'booking_confirmed') {
+                toast.success(title);
+            } else if (type === 'booking_cancelled' || type === 'booking_rejected') {
+                toast(title, { icon: '⚠️' });
+            } else if (type === 'booking_created') {
+                toast(title, { icon: '📅' });
+            } else {
+                toast(title, { icon: '🔔' });
+            }
+
             queryClient.invalidateQueries({ queryKey: ['bookings'] });
+            queryClient.invalidateQueries({ queryKey: ['booking'] });
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
             queryClient.invalidateQueries({ queryKey: ['notifications-unread'] });
             queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-        });
-
-        es.addEventListener('booking.confirmed', () => {
-            toast.success('Booking confirmed');
-            queryClient.invalidateQueries({ queryKey: ['bookings'] });
-            queryClient.invalidateQueries({ queryKey: ['notifications-unread'] });
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-        });
-
-        es.addEventListener('booking.cancelled', () => {
-            toast('Booking cancelled', { icon: '⚠️' });
-            queryClient.invalidateQueries({ queryKey: ['bookings'] });
-            queryClient.invalidateQueries({ queryKey: ['notifications-unread'] });
             queryClient.invalidateQueries({ queryKey: ['availability'] });
         });
 

@@ -77,6 +77,7 @@ export function useConfirmBooking() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['bookings'] });
+            queryClient.invalidateQueries({ queryKey: ['booking'] });
             queryClient.invalidateQueries({ queryKey: ['dashboard'] });
         },
     });
@@ -112,6 +113,7 @@ export function useRejectBooking() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['bookings'] });
+            queryClient.invalidateQueries({ queryKey: ['booking'] });
             queryClient.invalidateQueries({ queryKey: ['dashboard'] });
         },
     });
