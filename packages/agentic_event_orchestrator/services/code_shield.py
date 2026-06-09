@@ -206,7 +206,7 @@ class CodeShield:
             if match:
                 issues.append({
                     "type": "dangerous_python_function",
-                    "severity": "medium",
+                    "severity": "high",
                     "pattern_index": i,
                     "match": match.group(0)[:50],
                 })

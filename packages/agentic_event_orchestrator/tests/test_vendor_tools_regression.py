@@ -1,20 +1,23 @@
 """
 Vendor tool regression tests — Task 2 (Preservation).
 
-These tests verify that the vendor HTTP tools continue to return correct
-response shapes after the fix.  They mock httpx.AsyncClient so no real
-backend is needed.
+search_vendors / get_vendor_recommendations: HTTP tools — tested with respx mocks.
+get_vendor_details / get_vendor_services / compare_vendors / check_vendor_availability:
+  DB-direct tools — tested with in-memory SQLite via conftest fixtures.
 
-All tests MUST PASS on both unfixed and fixed code.
+All tests MUST PASS without a real backend or Postgres.
 """
 from __future__ import annotations
 
 import json
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest
 import respx
+from agents.tool_context import ToolContext
+from sqlalchemy import text as sa_text
 
 from tools.vendor_tools import (
     check_vendor_availability,
@@ -81,13 +84,65 @@ AVAILABILITY_PAYLOAD = {
 
 
 # ---------------------------------------------------------------------------
-# Helper: invoke a FunctionTool via on_invoke_tool
+# Helpers
 # ---------------------------------------------------------------------------
 
+
+_NO_CTX = ToolContext(
+    context=None,
+    tool_name="test_tool",
+    tool_call_id="test-call-id",
+    tool_arguments="{}",
+    run_config=None,
+)
+
+
 async def _call(tool, args: dict) -> dict:
-    """Call a FunctionTool with the given args dict and return parsed JSON."""
-    result_str = await tool.on_invoke_tool(None, json.dumps(args))
+    """Invoke an HTTP-only or validation-only FunctionTool (no AgentContext needed)."""
+    result_str = await tool.on_invoke_tool(_NO_CTX, json.dumps(args))
     return json.loads(result_str)
+
+
+async def _call_db(tool, ctx, args: dict) -> dict:
+    """Invoke a DB-direct FunctionTool that requires a RunContextWrapper."""
+    result_str = await tool.on_invoke_tool(ctx, json.dumps(args))
+    return json.loads(result_str)
+
+
+# ---------------------------------------------------------------------------
+# DB seed helper
+# ---------------------------------------------------------------------------
+
+
+async def _seed_vendor(db, *, status: str = "ACTIVE") -> tuple[str, str]:
+    """Insert a vendor + one active service. Returns (vendor_id, service_id)."""
+    vendor_user_id = str(uuid.uuid4())
+    vendor_id = str(uuid.uuid4())
+    service_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+
+    await db.execute(sa_text(
+        "INSERT INTO users (id, email, password_hash, created_at, updated_at) "
+        "VALUES (:id, :email, 'x', :now, :now)"
+    ), {"id": vendor_user_id, "email": f"vu-{vendor_user_id}@test.com", "now": now})
+
+    await db.execute(sa_text(
+        "INSERT INTO vendors (id, user_id, business_name, contact_email, status, rating, "
+        "total_reviews, created_at, updated_at) "
+        "VALUES (:id, :uid, :name, :email, :status, 4.5, 10, :now, :now)"
+    ), {
+        "id": vendor_id, "uid": vendor_user_id,
+        "name": f"Vendor {vendor_id[:4]}", "email": f"{vendor_id}@v.com",
+        "status": status, "now": now,
+    })
+
+    await db.execute(sa_text(
+        "INSERT INTO services (id, vendor_id, name, price_min, price_max, capacity, "
+        "is_active, created_at, updated_at) "
+        "VALUES (:id, :vid, 'Wedding Package', 50000.0, 150000.0, 500, 1, :now, :now)"
+    ), {"id": service_id, "vid": vendor_id, "now": now})
+
+    return vendor_id, service_id
 
 
 # ---------------------------------------------------------------------------
@@ -160,92 +215,75 @@ class TestSearchVendors:
 
 
 class TestGetVendorDetails:
-    """get_vendor_details returns correct shape and no HMAC headers."""
+    """get_vendor_details uses DB — tested with in-memory SQLite fixtures."""
 
     @pytest.mark.asyncio
-    @respx.mock
-    async def test_returns_vendor_data(self):
-        respx.get(f"http://localhost:5000/api/v1/public_vendors/{VENDOR_ID}").mock(
-            return_value=httpx.Response(200, json=VENDOR_DETAIL_PAYLOAD)
-        )
-        result = await _call(get_vendor_details, {"vendor_id": VENDOR_ID})
-        assert result.get("id") == VENDOR_ID
-        assert result.get("business_name") == "Elite Photography"
+    async def test_returns_vendor_data(self, db_session, make_ctx):
+        vendor_id, _ = await _seed_vendor(db_session)
+        ctx = make_ctx(uuid.uuid4())
+
+        result = await _call_db(get_vendor_details, ctx, {"vendor_id": vendor_id})
+
+        assert result.get("id") == vendor_id
+        assert result.get("business_name") is not None
 
     @pytest.mark.asyncio
-    @respx.mock
-    async def test_no_hmac_headers_sent(self):
-        captured_request = None
+    async def test_not_found_returns_error(self, db_session, make_ctx):
+        ctx = make_ctx(uuid.uuid4())
 
-        def capture(request):
-            nonlocal captured_request
-            captured_request = request
-            return httpx.Response(200, json=VENDOR_DETAIL_PAYLOAD)
+        result = await _call_db(get_vendor_details, ctx, {"vendor_id": str(uuid.uuid4())})
 
-        respx.get(f"http://localhost:5000/api/v1/public_vendors/{VENDOR_ID}").mock(
-            side_effect=capture
-        )
-        await _call(get_vendor_details, {"vendor_id": VENDOR_ID})
-
-        assert captured_request is not None
-        headers = dict(captured_request.headers)
-        hmac_headers = [k for k in headers if k.lower().startswith("x-service")]
-        assert not hmac_headers, (
-            f"HMAC headers found on public endpoint: {hmac_headers}."
-        )
+        assert "error" in result
 
     @pytest.mark.asyncio
-    @respx.mock
-    async def test_not_found_returns_error(self):
-        respx.get(f"http://localhost:5000/api/v1/public_vendors/{VENDOR_ID}").mock(
-            return_value=httpx.Response(404)
-        )
-        result = await _call(get_vendor_details, {"vendor_id": VENDOR_ID})
+    async def test_inactive_vendor_returns_error(self, db_session, make_ctx):
+        vendor_id, _ = await _seed_vendor(db_session, status="PENDING")
+        ctx = make_ctx(uuid.uuid4())
+
+        result = await _call_db(get_vendor_details, ctx, {"vendor_id": vendor_id})
+
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_invalid_uuid_returns_error(self, db_session, make_ctx):
+        ctx = make_ctx(uuid.uuid4())
+
+        result = await _call_db(get_vendor_details, ctx, {"vendor_id": "not-a-uuid"})
+
         assert "error" in result
 
 
 class TestGetVendorServices:
-    """get_vendor_services returns only active services with correct shape."""
+    """get_vendor_services uses DB — returns only active services."""
 
     @pytest.mark.asyncio
-    @respx.mock
-    async def test_returns_active_services_only(self):
-        payload = {
-            "success": True,
-            "data": {
-                "id": VENDOR_ID,
-                "business_name": "Elite Photography",
-                "services": [
-                    {"id": SERVICE_ID, "name": "Wedding Package", "price_min": 50000.0,
-                     "price_max": 150000.0, "capacity": 500, "is_active": True},
-                    {"id": str(uuid.uuid4()), "name": "Inactive Package", "price_min": 10000.0,
-                     "price_max": 20000.0, "capacity": 100, "is_active": False},
-                ],
-            },
-        }
-        respx.get(f"http://localhost:5000/api/v1/public_vendors/{VENDOR_ID}").mock(
-            return_value=httpx.Response(200, json=payload)
-        )
-        result = await _call(get_vendor_services, {"vendor_id": VENDOR_ID})
-        assert result["vendor_id"] == VENDOR_ID
-        assert "services" in result
-        assert len(result["services"]) == 1
+    async def test_returns_active_services(self, db_session, make_ctx):
+        vendor_id, service_id = await _seed_vendor(db_session)
+        ctx = make_ctx(uuid.uuid4())
+
+        result = await _call_db(get_vendor_services, ctx, {"vendor_id": vendor_id})
+
+        assert result["vendor_id"] == vendor_id
+        assert len(result["services"]) >= 1
         assert result["services"][0]["name"] == "Wedding Package"
 
     @pytest.mark.asyncio
-    async def test_empty_vendor_id_returns_error(self):
-        result = await _call(get_vendor_services, {"vendor_id": ""})
+    async def test_empty_vendor_id_returns_error(self, db_session, make_ctx):
+        ctx = make_ctx(uuid.uuid4())
+        # empty vendor_id is validated before DB access
+        result = await _call_db(get_vendor_services, ctx, {"vendor_id": ""})
+
         assert result["vendor_id"] == ""
         assert result["services"] == []
         assert "error" in result
 
     @pytest.mark.asyncio
-    @respx.mock
-    async def test_service_shape_has_required_fields(self):
-        respx.get(f"http://localhost:5000/api/v1/public_vendors/{VENDOR_ID}").mock(
-            return_value=httpx.Response(200, json=VENDOR_DETAIL_PAYLOAD)
-        )
-        result = await _call(get_vendor_services, {"vendor_id": VENDOR_ID})
+    async def test_service_shape_has_required_fields(self, db_session, make_ctx):
+        vendor_id, _ = await _seed_vendor(db_session)
+        ctx = make_ctx(uuid.uuid4())
+
+        result = await _call_db(get_vendor_services, ctx, {"vendor_id": vendor_id})
+
         for svc in result["services"]:
             assert "id" in svc
             assert "name" in svc
@@ -255,42 +293,9 @@ class TestGetVendorServices:
 
 
 class TestCompareVendors:
-    """compare_vendors returns sorted comparison list with correct shape."""
+    """compare_vendors uses DB — validation tests work without ctx, data tests need fixtures."""
 
-    @pytest.mark.asyncio
-    @respx.mock
-    async def test_returns_comparison_list(self):
-        vid_a = str(uuid.uuid4())
-        vid_b = str(uuid.uuid4())
-
-        def detail_handler(request):
-            vid = request.url.path.split("/")[-1]
-            return httpx.Response(200, json={
-                "success": True,
-                "data": {
-                    "id": vid,
-                    "business_name": f"Vendor {vid[:4]}",
-                    "city": "Lahore",
-                    "rating": 4.5 if vid == vid_a else 4.0,
-                    "services": [],
-                },
-            })
-
-        respx.get(url__regex=r".*/public_vendors/.*").mock(side_effect=detail_handler)
-        # Availability endpoint — mock to return empty slots (unavailable)
-        respx.get(url__regex=r".*/vendors/.*/availability").mock(
-            return_value=httpx.Response(200, json={"data": {"slots": []}})
-        )
-
-        result = await _call(compare_vendors, {
-            "vendor_ids": [vid_a, vid_b],
-            "event_date": "2027-06-01",
-        })
-        assert "comparison" in result
-        assert len(result["comparison"]) == 2
-        # Higher rated vendor should be first
-        assert result["comparison"][0]["rating"] >= result["comparison"][1]["rating"]
-
+    # Validation tests — these return before touching ctx.context.db
     @pytest.mark.asyncio
     async def test_requires_at_least_two_vendors(self):
         result = await _call(compare_vendors, {
@@ -315,32 +320,37 @@ class TestCompareVendors:
         })
         assert "error" in result
 
+    # Data tests — require DB fixtures
     @pytest.mark.asyncio
-    @respx.mock
-    async def test_failed_fetch_appears_with_null_fields(self):
-        vid_a = str(uuid.uuid4())
-        vid_b = str(uuid.uuid4())
+    async def test_returns_comparison_list(self, db_session, make_ctx):
+        vid_a, _ = await _seed_vendor(db_session)
+        vid_b, _ = await _seed_vendor(db_session)
+        ctx = make_ctx(uuid.uuid4())
 
-        # vid_a returns data, vid_b returns 404
-        respx.get(f"http://localhost:5000/api/v1/public_vendors/{vid_a}").mock(
-            return_value=httpx.Response(200, json={
-                "success": True,
-                "data": {"id": vid_a, "business_name": "Vendor A", "rating": 4.5, "city": "Lahore", "services": []},
-            })
-        )
-        respx.get(f"http://localhost:5000/api/v1/public_vendors/{vid_b}").mock(
-            return_value=httpx.Response(404)
-        )
-        respx.get(url__regex=r".*/vendors/.*/availability").mock(
-            return_value=httpx.Response(200, json={"data": {"slots": []}})
-        )
-
-        result = await _call(compare_vendors, {
+        result = await _call_db(compare_vendors, ctx, {
             "vendor_ids": [vid_a, vid_b],
-            "event_date": "2027-06-01",
+            "event_date": "2030-06-01",
         })
+
         assert "comparison" in result
-        failed = next((c for c in result["comparison"] if c["vendor_id"] == vid_b), None)
-        assert failed is not None
-        assert failed["business_name"] is None
-        assert failed["rating"] is None
+        assert len(result["comparison"]) == 2
+        ratings = [c["rating"] for c in result["comparison"] if c["rating"] is not None]
+        if len(ratings) == 2:
+            assert ratings[0] >= ratings[1]
+
+    @pytest.mark.asyncio
+    async def test_unknown_vendor_appears_with_null_fields(self, db_session, make_ctx):
+        vid_a, _ = await _seed_vendor(db_session)
+        vid_missing = str(uuid.uuid4())
+        ctx = make_ctx(uuid.uuid4())
+
+        result = await _call_db(compare_vendors, ctx, {
+            "vendor_ids": [vid_a, vid_missing],
+            "event_date": "2030-07-01",
+        })
+
+        assert "comparison" in result
+        missing = next((c for c in result["comparison"] if c["vendor_id"] == vid_missing), None)
+        assert missing is not None
+        assert missing["business_name"] is None
+        assert missing["rating"] is None

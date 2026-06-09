@@ -191,7 +191,8 @@ async def create_event(
         et_row = et_result.fetchone()
 
         # Pass 2: partial/contains match (e.g. "birthday" → "Birthday Party")
-        if not et_row:
+        # Skip for very short strings to avoid false positives (e.g. "0" matching any type with a digit)
+        if not et_row and len(event_type.strip()) >= 3:
             et_result = await db.execute(
                 sa_text(
                     "SELECT id, name FROM event_types "
@@ -241,6 +242,27 @@ async def create_event(
                 start_date = start_date.replace(tzinfo=timezone.utc)
         except ValueError:
             return _err(f"Invalid event_date '{event_date}'. Use ISO format: YYYY-MM-DD.")
+
+        # Enforce free-plan event limit (mirrors EventService._enforce_free_plan_event_limit)
+        sub_result = await db.execute(
+            sa_text("SELECT subscription_status FROM users WHERE id = :uid LIMIT 1"),
+            {"uid": str(user_id)},
+        )
+        sub_row = sub_result.fetchone()
+        if sub_row and sub_row.subscription_status == "free":
+            count_result = await db.execute(
+                sa_text(
+                    "SELECT COUNT(*) FROM events "
+                    "WHERE user_id = :uid AND status != 'canceled'"
+                ),
+                {"uid": str(user_id)},
+            )
+            event_count = count_result.scalar() or 0
+            if event_count >= 3:
+                return _err(
+                    "Free plan allows only 3 active events. "
+                    "Upgrade to Pro for unlimited events."
+                )
 
         event_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)

@@ -345,7 +345,7 @@ async def compare_vendors(
             return json.dumps({"error": "vendor_ids must not contain empty strings"})
         try:
             event_dt = date.fromisoformat(event_date)
-            if event_dt <= datetime.utcnow().date():
+            if event_dt <= datetime.now(timezone.utc).date():
                 return json.dumps({"error": "event_date must be a future date"})
         except ValueError:
             return json.dumps({"error": "event_date must be a valid ISO-8601 date (YYYY-MM-DD)"})

@@ -108,9 +108,9 @@ class GuardrailService:
         return True
 
     def filter_output(self, text: str, max_chars: int = 5000) -> str:
+        text = _CNIC_RE.sub("[CNIC REDACTED]", text)  # Before phone — CNIC is more specific
         text = _EMAIL_RE.sub("[EMAIL REDACTED]", text)
         text = _PHONE_RE.sub("[PHONE REDACTED]", text)
-        text = _CNIC_RE.sub("[CNIC REDACTED]", text)
         if len(text) > max_chars:
             text = text[:max_chars] + "\n\n*[Response truncated.]*"
         return text

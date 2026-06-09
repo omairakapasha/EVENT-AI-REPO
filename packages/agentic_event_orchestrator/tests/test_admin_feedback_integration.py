@@ -330,13 +330,15 @@ class TestSmokeTests:
     """Quick smoke tests to verify system is operational."""
     
     @pytest.mark.asyncio
+    @pytest.mark.skip(reason="Requires running server")
     async def test_health_check(self):
         """Test basic health check endpoint."""
         async with httpx.AsyncClient(base_url=BASE_URL) as client:
             response = await client.get("/health")
             assert response.status_code == 200
-    
+
     @pytest.mark.asyncio
+    @pytest.mark.skip(reason="Requires running server")
     async def test_openapi_docs_available(self):
         """Test OpenAPI documentation is available."""
         async with httpx.AsyncClient(base_url=BASE_URL) as client:

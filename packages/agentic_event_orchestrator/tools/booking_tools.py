@@ -51,14 +51,31 @@ async def create_booking_request(
         svc_result = await db.execute(
             sa_text(
                 "SELECT id, price_min, price_max, name FROM services "
-                "WHERE id = :service_id AND is_active = 1 OR "
-                "      id = :service_id AND is_active = true LIMIT 1"
+                "WHERE id = :service_id AND is_active = true LIMIT 1"
             ),
             {"service_id": service_id},
         )
         svc_row = svc_result.fetchone()
         if not svc_row:
             return _err(f"Service {service_id} not found or is not active.")
+
+        # Guard against double-booking: reject if an active booking already exists
+        # for the same vendor+service on the same date
+        conflict_result = await db.execute(
+            sa_text(
+                "SELECT id FROM bookings "
+                "WHERE vendor_id = :vendor_id AND service_id = :service_id "
+                "AND event_date = :event_date "
+                "AND status NOT IN ('cancelled', 'rejected') "
+                "LIMIT 1"
+            ),
+            {"vendor_id": vendor_id, "service_id": service_id, "event_date": event_date},
+        )
+        if conflict_result.fetchone():
+            return _err(
+                f"This vendor service is already booked for {event_date}. "
+                "Please choose a different date."
+            )
 
         unit_price = float(svc_row.price_min or 0.0)
         qty = max(1, min(quantity, 10000))
@@ -90,7 +107,7 @@ async def create_booking_request(
                 "notes": notes[:500] if notes else "",
                 "unit_price": unit_price,
                 "total_price": total_price,
-                "currency": "USD",
+                "currency": "PKR",
                 "payment_status": "pending",
                 "created_at": now,
                 "updated_at": now,
@@ -194,6 +211,147 @@ async def get_booking_details(
         })
     except Exception as e:
         logger.error("get_booking_details error: %s", e)
+        return _err(str(e))
+
+
+@function_tool
+async def get_active_quotes(ctx: RunContextWrapper[AgentContext]) -> str:
+    """Get all open quotes for the current user's bookings.
+    Returns a JSON string listing quotes that are in 'sent' or 'countered' status."""
+    try:
+        from sqlalchemy import text as sa_text
+        db = ctx.context.db
+        user_id = ctx.context.user_id
+
+        result = await db.execute(
+            sa_text(
+                "SELECT q.id, q.booking_id, q.vendor_id, q.subtotal, q.deposit_required, "
+                "       q.currency, q.status, q.valid_until, q.round_number, q.notes "
+                "FROM quotes q "
+                "JOIN bookings b ON b.id = q.booking_id "
+                "WHERE b.user_id = :user_id "
+                "AND q.status IN ('sent', 'countered') "
+                "ORDER BY q.created_at DESC"
+            ),
+            {"user_id": str(user_id)},
+        )
+        rows = result.fetchall()
+        quotes = [
+            {
+                "id": str(row.id),
+                "booking_id": str(row.booking_id),
+                "vendor_id": str(row.vendor_id),
+                "subtotal": row.subtotal,
+                "deposit_required": row.deposit_required,
+                "currency": row.currency,
+                "status": row.status,
+                "valid_until": str(row.valid_until) if row.valid_until else None,
+                "round_number": row.round_number,
+                "notes": row.notes,
+            }
+            for row in rows
+        ]
+        return json.dumps({"quotes": quotes, "total": len(quotes)})
+    except Exception as e:
+        logger.error("get_active_quotes error: %s", e)
+        return json.dumps({"quotes": [], "error": str(e)})
+
+
+@function_tool
+async def submit_counter_offer(
+    ctx: RunContextWrapper[AgentContext],
+    quote_id: str,
+    proposed_total_pkr: float,
+    message: str = "",
+) -> str:
+    """Submit a counter-offer on an open quote.
+    IMPORTANT: Only call this AFTER showing the user the proposed amount and receiving confirmation.
+    Returns a JSON string with the counter-offer ID and new quote status."""
+    try:
+        from sqlalchemy import text as sa_text
+        db = ctx.context.db
+        user_id = ctx.context.user_id
+
+        # Verify quote exists and is in 'sent' status
+        quote_result = await db.execute(
+            sa_text(
+                "SELECT q.id, q.status, q.booking_id, b.user_id AS booking_user_id "
+                "FROM quotes q "
+                "LEFT JOIN bookings b ON b.id = q.booking_id "
+                "WHERE q.id = :quote_id AND q.status = 'sent' LIMIT 1"
+            ),
+            {"quote_id": quote_id},
+        )
+        quote_row = quote_result.fetchone()
+        if not quote_row:
+            return _err("Quote not found or is not in 'sent' status.")
+
+        if quote_row.booking_user_id and str(quote_row.booking_user_id) != str(user_id):
+            return _err("You are not authorised to counter this quote.")
+
+        # Check round limit
+        round_result = await db.execute(
+            sa_text("SELECT COUNT(*) FROM counter_offers WHERE quote_id = :quote_id"),
+            {"quote_id": quote_id},
+        )
+        round_count = round_result.scalar() or 0
+        if round_count >= 5:
+            return _err("Maximum negotiation rounds (5) reached.")
+
+        # Supersede existing pending counters
+        now = datetime.now(timezone.utc)
+        await db.execute(
+            sa_text(
+                "UPDATE counter_offers SET status = 'superseded', updated_at = :now "
+                "WHERE quote_id = :quote_id AND status = 'pending'"
+            ),
+            {"quote_id": quote_id, "now": now},
+        )
+
+        counter_id = str(uuid.uuid4())
+        await db.execute(
+            sa_text(
+                "INSERT INTO counter_offers "
+                "(id, quote_id, proposed_by_user_id, proposed_total, proposed_changes, message, status, created_at, updated_at) "
+                "VALUES (:id, :quote_id, :user_id, :proposed_total, :changes, :message, 'pending', :now, :now)"
+            ),
+            {
+                "id": counter_id,
+                "quote_id": quote_id,
+                "user_id": str(user_id),
+                "proposed_total": proposed_total_pkr,
+                "changes": json.dumps({}),
+                "message": message[:500] if message else "",
+                "now": now,
+            },
+        )
+
+        # Update quote to 'countered' and booking to 'negotiating'
+        await db.execute(
+            sa_text("UPDATE quotes SET status = 'countered', updated_at = :now WHERE id = :quote_id"),
+            {"quote_id": quote_id, "now": now},
+        )
+        if quote_row.booking_id:
+            await db.execute(
+                sa_text(
+                    "UPDATE bookings SET status = 'negotiating', updated_at = :now "
+                    "WHERE id = :booking_id AND status NOT IN ('cancelled', 'rejected', 'completed', 'no_show')"
+                ),
+                {"booking_id": str(quote_row.booking_id), "now": now},
+            )
+
+        await db.flush()
+        await db.commit()
+
+        return json.dumps({
+            "success": True,
+            "counter_offer_id": counter_id,
+            "quote_status": "countered",
+            "proposed_total_pkr": proposed_total_pkr,
+            "message": "Counter-offer submitted. The vendor will respond shortly.",
+        })
+    except Exception as e:
+        logger.error("submit_counter_offer error: %s", e)
         return _err(str(e))
 
 

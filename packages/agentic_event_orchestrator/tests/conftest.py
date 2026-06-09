@@ -14,6 +14,7 @@ from typing import AsyncGenerator, Callable
 
 import pytest
 import pytest_asyncio
+from agents.tool_context import ToolContext
 from sqlalchemy import (
     Boolean,
     Column,
@@ -43,17 +44,6 @@ class AgentContext:
 
 
 # ---------------------------------------------------------------------------
-# Minimal RunContext stub
-# The real openai-agents RunContext wraps a context object and exposes it via
-# .context.  We replicate just enough for direct tool invocation in tests.
-# ---------------------------------------------------------------------------
-
-@dataclasses.dataclass
-class _RunContextWrapper:
-    context: AgentContext
-
-
-# ---------------------------------------------------------------------------
 # Minimal table metadata (mirrors backend models, SQLite-compatible)
 # ---------------------------------------------------------------------------
 
@@ -71,6 +61,8 @@ users_table = Table(
     Column("is_active", Boolean, default=True),
     Column("email_verified", Boolean, default=False),
     Column("failed_login_attempts", Integer, default=0),
+    Column("subscription_status", String(20), default="free"),
+    Column("subscription_expires_at", DateTime),
     Column("created_at", DateTime, default=datetime.utcnow),
     Column("updated_at", DateTime, default=datetime.utcnow),
 )
@@ -166,6 +158,21 @@ bookings_table = Table(
     Column("total_price", Float, nullable=False),
     Column("currency", String(3), default="USD"),
     Column("payment_status", String(50), default="pending"),
+    Column("cancellation_reason", String(300)),
+    Column("cancelled_at", DateTime),
+    Column("created_at", DateTime, default=datetime.utcnow),
+    Column("updated_at", DateTime, default=datetime.utcnow),
+)
+
+vendor_availability_table = Table(
+    "vendor_availability",
+    metadata,
+    Column("id", String(36), primary_key=True),
+    Column("vendor_id", String(36), ForeignKey("vendors.id"), nullable=False),
+    Column("service_id", String(36), ForeignKey("services.id")),
+    Column("date", String(50), nullable=False),
+    Column("status", String(50), default="available"),
+    Column("locked_until", DateTime),
     Column("created_at", DateTime, default=datetime.utcnow),
     Column("updated_at", DateTime, default=datetime.utcnow),
 )
@@ -193,25 +200,29 @@ async def create_tables(engine):
 
 @pytest_asyncio.fixture
 async def db_session(engine, create_tables) -> AsyncGenerator[AsyncSession, None]:
-    """Function-scoped session that rolls back after each test."""
+    """Function-scoped session. Tools manage their own commits; tests use unique UUIDs for isolation."""
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with async_session() as session:
-        async with session.begin():
-            yield session
-            await session.rollback()
+        yield session
 
 
 @pytest.fixture
-def make_ctx(db_session: AsyncSession) -> Callable[[uuid.UUID], _RunContextWrapper]:
+def make_ctx(db_session: AsyncSession) -> Callable[[uuid.UUID], ToolContext]:
     """
-    Factory fixture: returns a function that builds a RunContext-like wrapper
-    carrying the test session and the given user_id.
+    Factory fixture: returns a function that builds a ToolContext carrying
+    the test DB session and the given user_id.
 
     Usage in tests:
         ctx = make_ctx(some_user_id)
-        result = await some_tool(ctx, ...)
+        result = await some_tool.on_invoke_tool(ctx, json.dumps(args))
     """
-    def _factory(user_id: uuid.UUID) -> _RunContextWrapper:
-        return _RunContextWrapper(context=AgentContext(db=db_session, user_id=user_id))
+    def _factory(user_id: uuid.UUID) -> ToolContext:
+        return ToolContext(
+            context=AgentContext(db=db_session, user_id=user_id),
+            tool_name="test_tool",
+            tool_call_id="test-call-id",
+            tool_arguments="{}",
+            run_config=None,
+        )
 
     return _factory
