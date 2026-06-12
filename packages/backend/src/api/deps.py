@@ -46,7 +46,18 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return await auth_service.verify_access_token(token, session)
+    user = await auth_service.verify_access_token(token, session)
+
+    if not user.email_verified:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "AUTH_EMAIL_NOT_VERIFIED",
+                "message": "Email address has not been verified.",
+            },
+        )
+
+    return user
 
 
 async def require_admin(

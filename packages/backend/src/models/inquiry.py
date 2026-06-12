@@ -50,7 +50,11 @@ class CustomerInquiry(SQLModel, table=True):
     # Vendor response tracking
     vendor_response: Optional[str] = None
     vendor_responded_at: Optional[datetime] = None
-    
+
+    # Quote bridge (G1.5)
+    quote_id: Optional[uuid.UUID] = Field(default=None, index=True)
+    quoted_amount: Optional[float] = None
+
     # Metadata
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)

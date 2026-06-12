@@ -7,7 +7,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import structlog
 
 from src.services.auth_service import auth_service
-from src.db.session import get_session
+from src.config.database import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
@@ -55,6 +55,15 @@ async def get_current_user(
         # Verify token, fetch and validate user in one call
         user = await auth_service.verify_access_token(token, session)
 
+        if not user.email_verified:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "AUTH_EMAIL_NOT_VERIFIED",
+                    "message": "Email address has not been verified.",
+                },
+            )
+
         # Attach user to request state for easy access in routes
         request.state.user = user
         return user
@@ -80,15 +89,20 @@ async def get_current_user_optional(
     Similar to get_current_user but returns None instead of raising exception
     when no or invalid token is provided.
 
-    Useful for endpoints that work both with and without authentication.
+    Intentionally does NOT enforce the email_verified guard — unverified users
+    are returned as-is so optional-auth endpoints can still serve them.
     Reads from Authorization header or httpOnly cookie.
     """
-    # Check if there's any token available (header or cookie)
-    has_token = bool(credentials) or bool(request.cookies.get("access_token"))
-    if not has_token:
+    token: Optional[str] = None
+    if credentials:
+        token = credentials.credentials
+    else:
+        token = request.cookies.get("access_token")
+
+    if not token:
         return None
 
     try:
-        return await get_current_user(request, credentials, session)
-    except HTTPException:
+        return await auth_service.verify_access_token(token, session)
+    except Exception:
         return None

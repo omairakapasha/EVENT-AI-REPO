@@ -3,6 +3,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from src.config.database import lifespan, get_settings
+from src.middleware.security_headers import SecurityHeadersMiddleware
 from src.api.health import router as health_router
 from src.api.v1.bookings import router as bookings_router
 from src.api.v1.auth import router as auth_router, users_router
@@ -21,6 +22,9 @@ from src.api.v1.uploads import router as uploads_router
 from src.api.v1.events import router as events_router
 from src.api.v1.notifications import router as notifications_router
 from src.api.v1.sse import router as sse_router
+from src.api.v1.subscriptions import router as subscriptions_router, admin_router as admin_subscriptions_router
+from src.api.v1.quotes import router as quotes_router
+from src.api.v1.reviews import router as reviews_router
 
 settings = get_settings()
 
@@ -38,6 +42,9 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+# ── Security headers ───────────────────────────────────────────────────────────
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 # ── Global exception handlers ─────────────────────────────────────────────────
@@ -114,6 +121,10 @@ app.include_router(uploads_router, prefix="/api/v1/uploads")
 app.include_router(events_router, prefix="/api/v1/events")
 app.include_router(notifications_router, prefix="/api/v1")
 app.include_router(sse_router, prefix="/api/v1")
+app.include_router(subscriptions_router, prefix="/api/v1/subscriptions")
+app.include_router(admin_subscriptions_router, prefix="/api/v1/admin/subscriptions")
+app.include_router(quotes_router, prefix="/api/v1")
+app.include_router(reviews_router, prefix="/api/v1")
 
 
 @app.get("/")

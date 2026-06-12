@@ -112,6 +112,8 @@ async def list_users(
             last_login_at=user.last_login_at,
             created_at=user.created_at,
             vendor=vendor_summary,
+            subscription_status=user.subscription_status,
+            subscription_expires_at=user.subscription_expires_at,
         )
         data.append(user_read.model_dump())
 

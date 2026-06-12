@@ -9,11 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
 from fastapi import HTTPException, status
 
-from src.models.booking import Booking, BookingStatus, BookingCreate, BookingMessage, BookingMessageCreate
+from src.models.booking import Booking, BookingStatus, BookingCreate, BookingMessage, BookingMessageCreate, PaymentStatus
 from src.models.vendor import Vendor
 from src.models.service import Service
 from src.models.availability import VendorAvailability, AvailabilityStatus
+from src.models.user import User
 from src.services.event_bus_service import event_bus
+from src.services.subscription_service import subscription_service
 import structlog
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
 try:
@@ -25,12 +27,22 @@ logger = structlog.get_logger()
 
 # Valid state machine transitions
 VALID_TRANSITIONS = {
-    BookingStatus.pending: {BookingStatus.confirmed, BookingStatus.rejected, BookingStatus.cancelled},
+    BookingStatus.pending: {BookingStatus.confirmed, BookingStatus.rejected, BookingStatus.cancelled, BookingStatus.quoted},
+    BookingStatus.quoted: {BookingStatus.negotiating, BookingStatus.accepted, BookingStatus.cancelled},
+    BookingStatus.negotiating: {BookingStatus.quoted, BookingStatus.accepted, BookingStatus.cancelled},
+    BookingStatus.accepted: {BookingStatus.awaiting_deposit, BookingStatus.confirmed, BookingStatus.cancelled},
+    BookingStatus.awaiting_deposit: {BookingStatus.confirmed, BookingStatus.cancelled},
     BookingStatus.confirmed: {BookingStatus.in_progress, BookingStatus.cancelled},
     BookingStatus.in_progress: {BookingStatus.completed, BookingStatus.no_show},
 }
 
 TERMINAL_STATUSES = {BookingStatus.completed, BookingStatus.cancelled, BookingStatus.rejected, BookingStatus.no_show}
+
+# States from which a user can directly cancel
+_CANCELLABLE_STATUSES = {
+    BookingStatus.pending, BookingStatus.quoted, BookingStatus.negotiating,
+    BookingStatus.accepted, BookingStatus.awaiting_deposit, BookingStatus.confirmed,
+}
 
 LOCK_TTL_SECONDS = 30
 
@@ -60,7 +72,9 @@ class BookingService:
         if row.status == AvailabilityStatus.BLOCKED:
             return {"available": False, "reason": "Vendor not available on this date"}
         if row.status == AvailabilityStatus.LOCKED:
-            if row.locked_until and row.locked_until > datetime.now(timezone.utc):
+            if row.locked_until is None:
+                return {"available": False, "reason": "Date is pending vendor confirmation"}
+            if row.locked_until > datetime.now(timezone.utc):
                 return {"available": False, "reason": "Date is temporarily held"}
             # Expired lock — treat as available
         return {"available": True}
@@ -133,6 +147,11 @@ class BookingService:
                     status_code=status.HTTP_409_CONFLICT,
                     detail=_err("CONFLICT_DATE_UNAVAILABLE", "Vendor is not available on this date."),
                 )
+            if row.status == AvailabilityStatus.LOCKED and row.locked_until is None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=_err("CONFLICT_DATE_UNAVAILABLE", "This date is pending vendor confirmation for another request."),
+                )
             if row.status == AvailabilityStatus.LOCKED and row.locked_until and row.locked_until > now:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
@@ -169,13 +188,26 @@ class BookingService:
         await session.flush()
         return row
 
+    async def _hold_pending(
+        self,
+        session: AsyncSession,
+        availability_row: VendorAvailability,
+        booking_id: uuid.UUID,
+    ) -> None:
+        """Hold slot for a pending booking — blocks other requests but is not yet booked."""
+        availability_row.status = AvailabilityStatus.LOCKED
+        availability_row.locked_until = None
+        availability_row.locked_reason = "pending_vendor_confirmation"
+        availability_row.booking_id = booking_id
+        availability_row.updated_at = datetime.now(timezone.utc)
+
     async def _confirm_lock(
         self,
         session: AsyncSession,
         availability_row: VendorAvailability,
         booking_id: uuid.UUID,
     ) -> None:
-        """Confirm lock → booked after successful booking creation."""
+        """Mark slot as booked — called when the vendor confirms the booking."""
         availability_row.status = AvailabilityStatus.BOOKED
         availability_row.locked_by = None
         availability_row.locked_until = None
@@ -252,20 +284,25 @@ class BookingService:
         quantity = booking_in.quantity or 1
         total_price = unit_price * quantity
 
+        # Payment only proceeds once the vendor accepts the booking
+        payment_status = PaymentStatus.pending
+
         # Create booking
-        booking_data = booking_in.model_dump(exclude={"unit_price", "total_price"})
+        booking_data = booking_in.model_dump(exclude={"unit_price", "total_price", "payment_status", "deposit_amount", "user_id", "status"})
         db_booking = Booking(
             **booking_data,
             user_id=user_id,
             status=BookingStatus.pending,
             unit_price=unit_price,
             total_price=total_price,
+            payment_status=payment_status,
+            deposit_amount=None,
         )
         session.add(db_booking)
         await session.flush()
 
-        # Confirm lock
-        await self._confirm_lock(session, avail_row, db_booking.id)
+        # Hold the slot for this pending request — becomes booked only on vendor confirm
+        await self._hold_pending(session, avail_row, db_booking.id)
 
         # Emit domain event
         await event_bus.emit(
@@ -355,16 +392,30 @@ class BookingService:
         if new_status == BookingStatus.confirmed:
             booking.confirmed_at = datetime.now(timezone.utc)
             booking.confirmed_by = user_id
+            # Vendor accepted — slot is now actually booked for this date
+            avail_row = await self._get_availability_row(
+                session, booking.vendor_id, booking.service_id, booking.event_date
+            )
+            if avail_row:
+                await self._confirm_lock(session, avail_row, booking.id)
+            # Pro users skip the deposit step — payment proceeds now that the vendor has accepted
+            if booking.payment_status == PaymentStatus.pending:
+                booker = await session.get(User, booking.user_id)
+                if booker is not None and subscription_service._is_pro_active(booker):
+                    booking.payment_status = PaymentStatus.paid
             event_type = "booking.confirmed"
             payload = {"booking_id": str(booking_id), "confirmed_by": str(user_id)}
-        elif new_status == BookingStatus.rejected:
+        elif new_status in (BookingStatus.rejected, BookingStatus.cancelled):
             booking.cancelled_at = datetime.now(timezone.utc)
             booking.cancelled_by = user_id
             booking.cancellation_reason = reason
             # Release availability slot
             await self._release_slot(session, booking.vendor_id, booking.service_id, booking.event_date)
+            # Reverse any payment already taken (e.g. Pro auto-pay) on a dead booking
+            if booking.payment_status in (PaymentStatus.paid, PaymentStatus.partial):
+                booking.payment_status = PaymentStatus.refunded
             event_type = "booking.cancelled"
-            payload = {"booking_id": str(booking_id), "reason": reason or "rejected"}
+            payload = {"booking_id": str(booking_id), "reason": reason or new_status.value}
         elif new_status == BookingStatus.completed:
             event_type = "booking.completed"
             payload = {"booking_id": str(booking_id)}
@@ -402,7 +453,7 @@ class BookingService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail=_err("CONFLICT_COMPLETED_BOOKINGS_CANNOT_CANCEL", "Cannot cancel a completed booking."),
             )
-        if booking.status not in {BookingStatus.pending, BookingStatus.confirmed}:
+        if booking.status not in _CANCELLABLE_STATUSES:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=_err("CONFLICT_ALREADY_CANCELLED", f"Cannot cancel booking with status '{booking.status}'."),

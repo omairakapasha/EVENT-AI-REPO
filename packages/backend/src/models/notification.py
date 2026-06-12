@@ -14,6 +14,10 @@ class NotificationType(str, Enum):
     booking_completed = "booking_completed"
     booking_rejected = "booking_rejected"
     booking_status_changed = "booking_status_changed"
+    booking_counter_offered = "booking_counter_offered"
+    booking_quoted = "booking_quoted"
+    booking_accepted = "booking_accepted"
+    booking_counter_rejected = "booking_counter_rejected"
     system = "system"
     # Event domain events
     event_created = "event_created"
@@ -22,6 +26,10 @@ class NotificationType(str, Enum):
     # Vendor domain events
     vendor_approved = "vendor_approved"
     vendor_rejected = "vendor_rejected"
+    vendor_suspended = "vendor_suspended"
+    subscription_granted = "subscription_granted"
+    subscription_revoked = "subscription_revoked"
+    inquiry_created = "inquiry_created"
 
 
 class Notification(SQLModel, table=True):

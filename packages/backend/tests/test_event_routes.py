@@ -9,6 +9,7 @@ import pytest
 import pytest_asyncio
 from datetime import datetime, timezone, timedelta
 from httpx import AsyncClient
+from sqlalchemy import text as sa_text
 
 pytestmark = pytest.mark.asyncio
 
@@ -19,13 +20,15 @@ PAST = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
 
-async def register_and_login(client: AsyncClient, email: str = None) -> str:
+async def register_and_login(client: AsyncClient, db_session, email: str = None) -> str:
     email = email or f"evtest_{uuid.uuid4().hex[:8]}@example.com"
     r = await client.post("/api/v1/auth/register", json={
         "email": email, "password": "TestPass123!",
         "first_name": "Event", "last_name": "Tester",
     })
     assert r.status_code == 201
+    await db_session.execute(sa_text("UPDATE users SET email_verified = 1 WHERE email = :email"), {"email": email})
+    await db_session.commit()
     return r.json()["access_token"]
 
 
@@ -40,15 +43,15 @@ async def create_event_type(client: AsyncClient, admin_token: str, name: str = N
     return r.json()["data"]["id"]
 
 
-async def register_admin(client: AsyncClient) -> str:
-    """Register a user and manually set role=admin via direct DB manipulation isn't possible,
-    so we use the register endpoint with role=admin (allowed in test env)."""
+async def register_admin(client: AsyncClient, db_session) -> str:
     email = f"admin_{uuid.uuid4().hex[:8]}@example.com"
     r = await client.post("/api/v1/auth/register", json={
         "email": email, "password": "AdminPass123!",
         "first_name": "Admin", "last_name": "User", "role": "admin",
     })
     assert r.status_code == 201
+    await db_session.execute(sa_text("UPDATE users SET email_verified = 1 WHERE email = :email"), {"email": email})
+    await db_session.commit()
     return r.json()["access_token"]
 
 
@@ -63,8 +66,8 @@ async def test_list_event_types_returns_envelope(client: AsyncClient):
     assert "meta" in body
 
 
-async def test_create_event_type_admin_201(client: AsyncClient):
-    token = await register_admin(client)
+async def test_create_event_type_admin_201(client: AsyncClient, db_session):
+    token = await register_admin(client, db_session)
     r = await client.post(
         "/api/v1/events/types",
         json={"name": f"Wedding_{uuid.uuid4().hex[:4]}", "display_order": 1},
@@ -75,8 +78,8 @@ async def test_create_event_type_admin_201(client: AsyncClient):
     assert "id" in r.json()["data"]
 
 
-async def test_create_event_type_duplicate_409(client: AsyncClient):
-    token = await register_admin(client)
+async def test_create_event_type_duplicate_409(client: AsyncClient, db_session):
+    token = await register_admin(client, db_session)
     name = f"UniqueType_{uuid.uuid4().hex[:6]}"
     await client.post(
         "/api/v1/events/types",
@@ -94,9 +97,9 @@ async def test_create_event_type_duplicate_409(client: AsyncClient):
 
 # ── Create Event ──────────────────────────────────────────────────────────────
 
-async def test_create_event_201(client: AsyncClient):
-    token = await register_and_login(client)
-    admin_token = await register_admin(client)
+async def test_create_event_201(client: AsyncClient, db_session):
+    token = await register_and_login(client, db_session)
+    admin_token = await register_admin(client, db_session)
     et_id = await create_event_type(client, admin_token)
 
     r = await client.post(
@@ -111,8 +114,8 @@ async def test_create_event_201(client: AsyncClient):
     assert body["data"]["status"] == "planned"
 
 
-async def test_create_event_invalid_event_type_422(client: AsyncClient):
-    token = await register_and_login(client)
+async def test_create_event_invalid_event_type_422(client: AsyncClient, db_session):
+    token = await register_and_login(client, db_session)
     r = await client.post(
         "/api/v1/events/",
         json={"event_type_id": str(uuid.uuid4()), "name": "Bad Event", "start_date": FUTURE},
@@ -122,9 +125,9 @@ async def test_create_event_invalid_event_type_422(client: AsyncClient):
     assert r.json()["error"]["code"] == "VALIDATION_INVALID_EVENT_TYPE"
 
 
-async def test_create_event_past_start_date_422(client: AsyncClient):
-    token = await register_and_login(client)
-    admin_token = await register_admin(client)
+async def test_create_event_past_start_date_422(client: AsyncClient, db_session):
+    token = await register_and_login(client, db_session)
+    admin_token = await register_admin(client, db_session)
     et_id = await create_event_type(client, admin_token)
 
     r = await client.post(
@@ -135,9 +138,9 @@ async def test_create_event_past_start_date_422(client: AsyncClient):
     assert r.status_code == 422
 
 
-async def test_create_event_end_before_start_422(client: AsyncClient):
-    token = await register_and_login(client)
-    admin_token = await register_admin(client)
+async def test_create_event_end_before_start_422(client: AsyncClient, db_session):
+    token = await register_and_login(client, db_session)
+    admin_token = await register_admin(client, db_session)
     et_id = await create_event_type(client, admin_token)
 
     r = await client.post(
@@ -153,9 +156,9 @@ async def test_create_event_end_before_start_422(client: AsyncClient):
 
 # ── List Events ───────────────────────────────────────────────────────────────
 
-async def test_list_events_pagination_meta(client: AsyncClient):
-    token = await register_and_login(client)
-    admin_token = await register_admin(client)
+async def test_list_events_pagination_meta(client: AsyncClient, db_session):
+    token = await register_and_login(client, db_session)
+    admin_token = await register_admin(client, db_session)
     et_id = await create_event_type(client, admin_token)
 
     # Create 2 events
@@ -175,9 +178,9 @@ async def test_list_events_pagination_meta(client: AsyncClient):
     assert len(body["data"]) >= 2
 
 
-async def test_list_events_status_filter(client: AsyncClient):
-    token = await register_and_login(client)
-    admin_token = await register_admin(client)
+async def test_list_events_status_filter(client: AsyncClient, db_session):
+    token = await register_and_login(client, db_session)
+    admin_token = await register_admin(client, db_session)
     et_id = await create_event_type(client, admin_token)
 
     await client.post(
@@ -197,9 +200,9 @@ async def test_list_events_status_filter(client: AsyncClient):
 
 # ── Get Event ─────────────────────────────────────────────────────────────────
 
-async def test_get_event_200(client: AsyncClient):
-    token = await register_and_login(client)
-    admin_token = await register_admin(client)
+async def test_get_event_200(client: AsyncClient, db_session):
+    token = await register_and_login(client, db_session)
+    admin_token = await register_admin(client, db_session)
     et_id = await create_event_type(client, admin_token)
 
     create_r = await client.post(
@@ -214,17 +217,17 @@ async def test_get_event_200(client: AsyncClient):
     assert r.json()["data"]["id"] == event_id
 
 
-async def test_get_event_404_not_found(client: AsyncClient):
-    token = await register_and_login(client)
+async def test_get_event_404_not_found(client: AsyncClient, db_session):
+    token = await register_and_login(client, db_session)
     r = await client.get(f"/api/v1/events/{uuid.uuid4()}", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 404
     assert r.json()["error"]["code"] == "NOT_FOUND_EVENT"
 
 
-async def test_get_event_404_wrong_user(client: AsyncClient):
-    token1 = await register_and_login(client)
-    token2 = await register_and_login(client)
-    admin_token = await register_admin(client)
+async def test_get_event_404_wrong_user(client: AsyncClient, db_session):
+    token1 = await register_and_login(client, db_session)
+    token2 = await register_and_login(client, db_session)
+    admin_token = await register_admin(client, db_session)
     et_id = await create_event_type(client, admin_token)
 
     create_r = await client.post(
@@ -240,9 +243,9 @@ async def test_get_event_404_wrong_user(client: AsyncClient):
 
 # ── Update Event ──────────────────────────────────────────────────────────────
 
-async def test_update_event_200(client: AsyncClient):
-    token = await register_and_login(client)
-    admin_token = await register_admin(client)
+async def test_update_event_200(client: AsyncClient, db_session):
+    token = await register_and_login(client, db_session)
+    admin_token = await register_admin(client, db_session)
     et_id = await create_event_type(client, admin_token)
 
     create_r = await client.post(
@@ -261,9 +264,9 @@ async def test_update_event_200(client: AsyncClient):
     assert r.json()["data"]["name"] == "New Name"
 
 
-async def test_update_event_terminal_status_409(client: AsyncClient):
-    token = await register_and_login(client)
-    admin_token = await register_admin(client)
+async def test_update_event_terminal_status_409(client: AsyncClient, db_session):
+    token = await register_and_login(client, db_session)
+    admin_token = await register_admin(client, db_session)
     et_id = await create_event_type(client, admin_token)
 
     create_r = await client.post(
@@ -288,9 +291,9 @@ async def test_update_event_terminal_status_409(client: AsyncClient):
 
 # ── Cancel Event ──────────────────────────────────────────────────────────────
 
-async def test_cancel_event_200(client: AsyncClient):
-    token = await register_and_login(client)
-    admin_token = await register_admin(client)
+async def test_cancel_event_200(client: AsyncClient, db_session):
+    token = await register_and_login(client, db_session)
+    admin_token = await register_admin(client, db_session)
     et_id = await create_event_type(client, admin_token)
 
     create_r = await client.post(
@@ -308,9 +311,9 @@ async def test_cancel_event_200(client: AsyncClient):
     assert r.json()["data"]["status"] == "canceled"
 
 
-async def test_cancel_already_canceled_409(client: AsyncClient):
-    token = await register_and_login(client)
-    admin_token = await register_admin(client)
+async def test_cancel_already_canceled_409(client: AsyncClient, db_session):
+    token = await register_and_login(client, db_session)
+    admin_token = await register_admin(client, db_session)
     et_id = await create_event_type(client, admin_token)
 
     create_r = await client.post(
@@ -327,9 +330,9 @@ async def test_cancel_already_canceled_409(client: AsyncClient):
 
 # ── Duplicate Event ───────────────────────────────────────────────────────────
 
-async def test_duplicate_event_201(client: AsyncClient):
-    token = await register_and_login(client)
-    admin_token = await register_admin(client)
+async def test_duplicate_event_201(client: AsyncClient, db_session):
+    token = await register_and_login(client, db_session)
+    admin_token = await register_admin(client, db_session)
     et_id = await create_event_type(client, admin_token)
 
     create_r = await client.post(
@@ -351,8 +354,8 @@ async def test_duplicate_event_201(client: AsyncClient):
     assert body["data"]["id"] != event_id
 
 
-async def test_duplicate_event_404_not_found(client: AsyncClient):
-    token = await register_and_login(client)
+async def test_duplicate_event_404_not_found(client: AsyncClient, db_session):
+    token = await register_and_login(client, db_session)
     r = await client.post(
         f"/api/v1/events/{uuid.uuid4()}/duplicate",
         headers={"Authorization": f"Bearer {token}"},
@@ -362,9 +365,9 @@ async def test_duplicate_event_404_not_found(client: AsyncClient):
 
 # ── Event Bookings ────────────────────────────────────────────────────────────
 
-async def test_list_event_bookings_empty(client: AsyncClient):
-    token = await register_and_login(client)
-    admin_token = await register_admin(client)
+async def test_list_event_bookings_empty(client: AsyncClient, db_session):
+    token = await register_and_login(client, db_session)
+    admin_token = await register_admin(client, db_session)
     et_id = await create_event_type(client, admin_token)
 
     create_r = await client.post(
@@ -387,8 +390,8 @@ async def test_list_event_bookings_empty(client: AsyncClient):
 
 # ── Admin: all events ─────────────────────────────────────────────────────────
 
-async def test_admin_list_all_events_200(client: AsyncClient):
-    admin_token = await register_admin(client)
+async def test_admin_list_all_events_200(client: AsyncClient, db_session):
+    admin_token = await register_admin(client, db_session)
     r = await client.get(
         "/api/v1/events/admin/all",
         headers={"Authorization": f"Bearer {admin_token}"},
@@ -399,8 +402,8 @@ async def test_admin_list_all_events_200(client: AsyncClient):
     assert "total" in body["meta"]
 
 
-async def test_admin_list_all_events_403_non_admin(client: AsyncClient):
-    token = await register_and_login(client)
+async def test_admin_list_all_events_403_non_admin(client: AsyncClient, db_session):
+    token = await register_and_login(client, db_session)
     r = await client.get(
         "/api/v1/events/admin/all",
         headers={"Authorization": f"Bearer {token}"},

@@ -29,7 +29,11 @@ _EVENT_MAP: Dict[str, Tuple[NotificationType, str, str]] = {
     "booking.cancelled":      (NotificationType.booking_cancelled,      "Booking Cancelled",         "Your booking on {event_date} has been cancelled."),
     "booking.completed":      (NotificationType.booking_completed,      "Booking Completed",         "Your event on {event_date} is complete. Leave a review!"),
     "booking.rejected":       (NotificationType.booking_rejected,       "Booking Rejected",          "Your booking request was declined."),
-    "booking.status_changed": (NotificationType.booking_status_changed, "Booking Updated",           "Your booking status changed to {new_status}."),
+    "booking.status_changed":   (NotificationType.booking_status_changed,   "Booking Updated",           "Your booking status changed to {new_status}."),
+    "booking.counter_offered":  (NotificationType.booking_counter_offered,  "Customer Counter-Offer",    "Customer proposed a new price on your quote."),
+    "booking.quoted":           (NotificationType.booking_quoted,           "New Quote Received",         "A vendor has sent you a quote for your event on {event_date}."),
+    "booking.accepted":         (NotificationType.booking_accepted,         "Quote Accepted",             "Your quote has been accepted."),
+    "booking.counter_rejected": (NotificationType.booking_counter_rejected, "Counter-Offer Declined",     "Your counter-offer was declined. The original quote is still available."),
     # Event domain events
     "event.created":          (NotificationType.event_created,          "Event Created",             "Your event '{event_name}' has been created."),
     "event.status_changed":   (NotificationType.event_status_changed,   "Event Status Updated",      "Your event '{event_name}' status changed to {new_status}."),
@@ -37,12 +41,23 @@ _EVENT_MAP: Dict[str, Tuple[NotificationType, str, str]] = {
     # Vendor domain events
     "vendor.approved":        (NotificationType.vendor_approved,        "Vendor Account Approved",   "Your vendor account has been approved. You can now accept bookings."),
     "vendor.rejected":        (NotificationType.vendor_rejected,        "Vendor Account Rejected",   "Your vendor account application was not approved."),
+    "vendor.suspended":       (NotificationType.vendor_suspended,       "Account Suspended",         "Your vendor account has been suspended."),
+    # Subscription events
+    "subscription.granted":   (NotificationType.subscription_granted,   "Pro Subscription Activated", "Your Pro subscription is now active."),
+    "subscription.revoked":   (NotificationType.subscription_revoked,   "Pro Subscription Ended",     "Your Pro subscription has been revoked."),
+    # Inquiry events
+    "inquiry.created":        (NotificationType.inquiry_created,        "New Customer Inquiry",       "You have a new customer inquiry."),
 }
 
 # Event types that resolve user_id directly from payload (not via ORM lookup)
 _PAYLOAD_USER_ID_EVENTS = {
     "event.created", "event.status_changed", "event.cancelled",
-    "vendor.approved", "vendor.rejected",
+    "subscription.granted", "subscription.revoked",
+}
+
+# Event types that resolve vendor.user_id via ORM lookup on vendor_id in payload
+_VENDOR_ID_EVENTS = {
+    "vendor.approved", "vendor.rejected", "vendor.suspended", "inquiry.created",
 }
 
 
@@ -106,6 +121,42 @@ class NotificationService:
             await self._send_email(session, recipient_id, title, body, event_type)
             return
 
+        # Vendor/inquiry events — resolve vendor.user_id via ORM lookup on vendor_id
+        if event_type in _VENDOR_ID_EVENTS:
+            vendor_id_str = payload.get("vendor_id")
+            if not vendor_id_str:
+                logger.warning("notification.handle.missing_vendor_id", event_type=event_type)
+                return
+            try:
+                vendor_id = uuid.UUID(str(vendor_id_str))
+            except (ValueError, AttributeError):
+                logger.warning("notification.handle.invalid_vendor_id", event_type=event_type, raw=vendor_id_str)
+                return
+            vendor_obj: Optional[Vendor] = await session.get(Vendor, vendor_id)
+            if not vendor_obj or not vendor_obj.user_id:
+                return
+            recipient_id = vendor_obj.user_id
+
+            if not await self._is_enabled_for_user(session, recipient_id, notif_type):
+                return
+
+            dedup_id = payload.get("inquiry_id") or vendor_id_str
+            if await self._is_duplicate(session, recipient_id, event_type, dedup_id):
+                return
+
+            notif = Notification(
+                user_id=recipient_id,
+                type=notif_type,
+                title=title,
+                body=body_template,  # no format vars for vendor/inquiry events
+                data=payload,
+            )
+            session.add(notif)
+            await session.flush()
+            await self._push_sse(recipient_id, notif)
+            await self._send_email(session, recipient_id, title, body_template, event_type)
+            return
+
         # Booking events — resolve via ORM lookup
         booking: Optional[Booking] = None
         booking_id_str = payload.get("booking_id")
@@ -133,6 +184,65 @@ class NotificationService:
         event_id = payload.get("booking_id") or payload.get("event_id")
         if await self._is_duplicate(session, recipient_id, event_type, event_id):
             return
+
+        # booking.counter_offered — notify VENDOR only (customer submitted it, no self-notification).
+        # Must come before the standard session.add below so we don't double-notify.
+        if event_type == "booking.counter_offered":
+            if booking and booking.vendor_id:
+                vendor: Optional[Vendor] = await session.get(Vendor, booking.vendor_id)
+                if vendor and vendor.user_id:
+                    if not await self._is_enabled_for_user(session, vendor.user_id, notif_type):
+                        return
+                    dedup_id = payload.get("booking_id") or payload.get("quote_id")
+                    if await self._is_duplicate(session, vendor.user_id, event_type, dedup_id):
+                        return
+                    proposed = payload.get("proposed_total", 0)
+                    vendor_body = (
+                        f"Customer proposed PKR {proposed:,.0f} on your quote "
+                        f"for {getattr(booking, 'event_name', None) or 'their event'}."
+                    )
+                    vendor_notif = Notification(
+                        user_id=vendor.user_id,
+                        type=notif_type,
+                        title=title,
+                        body=vendor_body,
+                        data=payload,
+                    )
+                    session.add(vendor_notif)
+                    await session.flush()
+                    await self._push_sse(vendor.user_id, vendor_notif)
+                    await self._send_email(
+                        session, vendor.user_id, title, vendor_body, event_type, booking
+                    )
+            return  # skip standard customer notification for counter_offered
+
+        # booking.accepted — route based on actor: customer accepts → notify vendor; vendor accepts → notify customer
+        if event_type == "booking.accepted" and payload.get("actor") == "customer":
+            if booking and booking.vendor_id:
+                vendor: Optional[Vendor] = await session.get(Vendor, booking.vendor_id)
+                if vendor and vendor.user_id:
+                    if not await self._is_enabled_for_user(session, vendor.user_id, notif_type):
+                        return
+                    dedup_id = payload.get("booking_id") or payload.get("quote_id")
+                    if await self._is_duplicate(session, vendor.user_id, event_type, dedup_id):
+                        return
+                    accepted_body = (
+                        f"Customer accepted your quote for "
+                        f"{getattr(booking, 'event_name', None) or 'their event'} "
+                        f"on {getattr(booking, 'event_date', '')}."
+                    )
+                    vendor_notif = Notification(
+                        user_id=vendor.user_id,
+                        type=notif_type,
+                        title=title,
+                        body=accepted_body,
+                        data=payload,
+                    )
+                    session.add(vendor_notif)
+                    await session.flush()
+                    await self._push_sse(vendor.user_id, vendor_notif)
+                    await self._send_email(session, vendor.user_id, title, accepted_body, event_type, booking)
+            return  # skip standard customer notification when customer is the actor
 
         notif = Notification(
             user_id=recipient_id,

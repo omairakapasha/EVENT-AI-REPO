@@ -6,7 +6,7 @@ from datetime import date
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.booking import (
@@ -19,6 +19,44 @@ from src.config.database import get_session
 from src.api.deps import get_current_user
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
+
+
+# ── Frontend request body ─────────────────────────────────────────────────────
+# The user portal sends camelCase keys (vendorId, serviceId, eventDate,
+# guestCount).  This shim accepts both camelCase and snake_case so existing
+# integrations keep working.
+
+class BookingCreateRequest(BaseModel):
+    vendor_id: Optional[uuid.UUID] = Field(None, alias="vendorId")
+    service_id: Optional[uuid.UUID] = Field(None, alias="serviceId")
+    event_date: Optional[date] = Field(None, alias="eventDate")
+    guest_count: Optional[int] = Field(None, alias="guestCount")
+    notes: Optional[str] = None
+    quantity: int = 1
+    # Allow both camelCase (frontend) and snake_case (direct API callers)
+    model_config = {"populate_by_name": True}
+
+    @model_validator(mode="after")
+    def _require_fields(self) -> "BookingCreateRequest":
+        if self.vendor_id is None:
+            raise ValueError("vendor_id / vendorId is required")
+        if self.service_id is None:
+            raise ValueError("service_id / serviceId is required")
+        if self.event_date is None:
+            raise ValueError("event_date / eventDate is required")
+        return self
+
+    def to_booking_create(self) -> BookingCreate:
+        return BookingCreate(
+            vendor_id=self.vendor_id,
+            service_id=self.service_id,
+            event_date=self.event_date,
+            guest_count=self.guest_count,
+            notes=self.notes,
+            quantity=self.quantity,
+            # unit_price / total_price are defaulted to 0.0 in BookingCreate
+            # and overwritten by booking_service.create_booking()
+        )
 
 
 # ── Request bodies ────────────────────────────────────────────────────────────
@@ -51,12 +89,12 @@ async def check_availability(
 
 @router.post("/", response_model=BookingRead, status_code=status.HTTP_201_CREATED)
 async def create_booking(
-    booking_in: BookingCreate,
+    booking_in: BookingCreateRequest,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
     """Create a new booking for the authenticated user."""
-    return await booking_service.create_booking(session, booking_in, current_user.id)
+    return await booking_service.create_booking(session, booking_in.to_booking_create(), current_user.id)
 
 
 @router.get("/")

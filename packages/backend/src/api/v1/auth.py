@@ -158,7 +158,7 @@ async def register(
 
     log.info("auth.register.success", user_id=str(user.id), email=user.email, ip=client_ip)
 
-    response = JSONResponse(content=tokens)
+    response = JSONResponse(content=tokens, status_code=status.HTTP_201_CREATED)
     _set_auth_cookies(response, tokens)
     return response
 
@@ -442,6 +442,38 @@ async def users_me(
         )
     user = await auth_service.verify_access_token(token, session)
     return {"success": True, "data": UserTokenData.model_validate(user).model_dump(mode="json"), "meta": {}}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Terms acceptance
+# ─────────────────────────────────────────────────────────────────────────────
+
+@users_router.post(
+    "/accept-terms",
+    summary="Record user acceptance of Terms & Conditions",
+)
+async def accept_terms(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+):
+    """Stamp terms_accepted_at for the authenticated user. Idempotent — safe to call multiple times."""
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "AUTH_UNAUTHORIZED", "message": "Not authenticated"},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user = await auth_service.verify_access_token(token, session)
+    if not user.terms_accepted_at:
+        user.terms_accepted_at = datetime.now(timezone.utc)
+        await session.commit()
+        log.info("auth.terms_accepted", user_id=str(user.id))
+    return {"success": True, "data": {"message": "Terms accepted."}, "meta": {}}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -31,6 +31,18 @@ from .domain_event import DomainEvent
 from .availability import VendorAvailability
 from .event import Event, EventType, EventStatus
 from .notification import Notification, NotificationType, NotificationRead
+from .quote import (
+    Quote,
+    QuoteCreate,
+    QuoteRead,
+    QuoteStatus,
+    CounterOffer,
+    CounterOfferCreate,
+    CounterOfferRead,
+    CounterOfferStatus,
+    CounterOfferRespond,
+)
+from .review import Review, ReviewCreate, ReviewRead
 
 
 __all__ = [
@@ -68,4 +80,16 @@ __all__ = [
     "NotificationRead",
     "VendorEmbedding",
     "VendorApiKey",
+    "Quote",
+    "QuoteCreate",
+    "QuoteRead",
+    "QuoteStatus",
+    "CounterOffer",
+    "CounterOfferCreate",
+    "CounterOfferRead",
+    "CounterOfferStatus",
+    "CounterOfferRespond",
+    "Review",
+    "ReviewCreate",
+    "ReviewRead",
 ]

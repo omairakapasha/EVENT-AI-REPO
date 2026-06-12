@@ -1,18 +1,22 @@
 """
-Email Service — SMTP-based email dispatch with fire-and-forget pattern.
-Logs emails in dev mode when SMTP is not configured.
+Email Service — Brevo transactional API (primary) with SMTP fallback.
+Dev mode: logs to console when neither is configured.
 """
 import asyncio
 import smtplib
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import Optional, Dict, Any
+from email.mime.text import MIMEText
 from datetime import datetime, timezone
+from typing import Any, Optional
 
-from src.config.database import get_settings
+import httpx
 import structlog
 
+from src.config.database import get_settings
+
 logger = structlog.get_logger()
+
+_BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email"
 
 
 class EmailService:
@@ -20,6 +24,7 @@ class EmailService:
 
     def __init__(self) -> None:
         self._settings = get_settings()
+        self._brevo_configured = bool(self._settings.brevo_api_key)
         self._smtp_configured = bool(
             self._settings.smtp_host and self._settings.smtp_user
         )
@@ -34,34 +39,45 @@ class EmailService:
         reply_to: Optional[str] = None,
     ) -> bool:
         """
-        Send email via SMTP (fire-and-forget).
-        Returns True if queued/sent, False if skipped.
-        Errors are logged but never raised.
+        Send email (fire-and-forget).
+        Priority: Brevo API → SMTP → dev console log.
+        Returns True if dispatched, False if skipped.
         """
-        if not self._smtp_configured:
-            # Dev mode: log email content instead of sending
-            logger.info(
-                "email.dev_mode",
-                to=to,
-                subject=subject,
-                body_preview=body_text or body_html[:200] + "...",
+        if self._brevo_configured:
+            asyncio.create_task(
+                self._send_brevo(
+                    to=to,
+                    subject=subject,
+                    body_html=body_html,
+                    body_text=body_text,
+                    from_email=from_email,
+                    reply_to=reply_to,
+                )
             )
             return True
 
-        # Fire-and-forget: spawn background task
-        asyncio.create_task(
-            self._send_smtp_email(
-                to=to,
-                subject=subject,
-                body_html=body_html,
-                body_text=body_text,
-                from_email=from_email,
-                reply_to=reply_to,
+        if self._smtp_configured:
+            asyncio.create_task(
+                self._send_smtp(
+                    to=to,
+                    subject=subject,
+                    body_html=body_html,
+                    body_text=body_text,
+                    from_email=from_email,
+                    reply_to=reply_to,
+                )
             )
+            return True
+
+        logger.info(
+            "email.dev_mode",
+            to=to,
+            subject=subject,
+            body_preview=(body_text or body_html)[:200],
         )
         return True
 
-    async def _send_smtp_email(
+    async def _send_brevo(
         self,
         to: str,
         subject: str,
@@ -71,8 +87,59 @@ class EmailService:
         reply_to: Optional[str] = None,
         max_retries: int = 3,
     ) -> bool:
-        """Internal: send via SMTP with retry logic."""
-        sender = from_email or self._settings.email_from
+        s = self._settings
+        sender_email = from_email or s.email_from
+        payload: dict[str, Any] = {
+            "sender": {"name": s.email_from_name, "email": sender_email},
+            "to": [{"email": to}],
+            "subject": subject,
+            "htmlContent": body_html,
+        }
+        if body_text:
+            payload["textContent"] = body_text
+        if reply_to:
+            payload["replyTo"] = {"email": reply_to}
+
+        headers = {
+            "api-key": s.brevo_api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    resp = await client.post(_BREVO_SEND_URL, json=payload, headers=headers)
+                    resp.raise_for_status()
+                logger.info("email.sent", provider="brevo", to=to, subject=subject, attempt=attempt)
+                return True
+            except Exception as exc:
+                logger.warning(
+                    "email.send_failed",
+                    provider="brevo",
+                    to=to,
+                    subject=subject,
+                    attempt=attempt,
+                    error=str(exc),
+                )
+                if attempt < max_retries:
+                    await asyncio.sleep(2 ** attempt)
+
+        logger.error("email.permanent_failure", provider="brevo", to=to, subject=subject, attempts=max_retries)
+        return False
+
+    async def _send_smtp(
+        self,
+        to: str,
+        subject: str,
+        body_html: str,
+        body_text: Optional[str] = None,
+        from_email: Optional[str] = None,
+        reply_to: Optional[str] = None,
+        max_retries: int = 3,
+    ) -> bool:
+        s = self._settings
+        sender = from_email or s.email_from
 
         for attempt in range(1, max_retries + 1):
             try:
@@ -83,39 +150,32 @@ class EmailService:
                 if reply_to:
                     msg["Reply-To"] = reply_to
                 msg["Date"] = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
-
                 if body_text:
                     msg.attach(MIMEText(body_text, "plain"))
                 msg.attach(MIMEText(body_html, "html"))
 
-                # Connect and send
-                with smtplib.SMTP(self._settings.smtp_host, self._settings.smtp_port) as server:
-                    if self._settings.smtp_secure:
+                with smtplib.SMTP(s.smtp_host, s.smtp_port) as server:
+                    if s.smtp_secure:
                         server.starttls()
-                    if self._settings.smtp_user and self._settings.smtp_password:
-                        server.login(self._settings.smtp_user, self._settings.smtp_password)
+                    if s.smtp_user and s.smtp_password:
+                        server.login(s.smtp_user, s.smtp_password)
                     server.sendmail(sender, to, msg.as_string())
 
-                logger.info("email.sent", to=to, subject=subject, attempt=attempt)
+                logger.info("email.sent", provider="smtp", to=to, subject=subject, attempt=attempt)
                 return True
-
-            except Exception as e:
+            except Exception as exc:
                 logger.warning(
                     "email.send_failed",
+                    provider="smtp",
                     to=to,
                     subject=subject,
                     attempt=attempt,
-                    error=str(e),
+                    error=str(exc),
                 )
                 if attempt < max_retries:
-                    await asyncio.sleep(2 ** attempt)  # exponential backoff
+                    await asyncio.sleep(2 ** attempt)
 
-        logger.error(
-            "email.permanent_failure",
-            to=to,
-            subject=subject,
-            attempts=max_retries,
-        )
+        logger.error("email.permanent_failure", provider="smtp", to=to, subject=subject, attempts=max_retries)
         return False
 
     def render_booking_email(
@@ -126,7 +186,7 @@ class EmailService:
         event_name: str,
         **extra: Any,
     ) -> tuple[str, str]:
-        """Render email subject and HTML body for booking events."""
+        """Return (subject, html_body) for a booking lifecycle event."""
         templates = {
             "booking.created": (
                 "Booking Request Received",

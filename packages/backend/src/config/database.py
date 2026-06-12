@@ -51,13 +51,17 @@ class Settings(BaseSettings):
     # Environment — controls cookie security and other dev/prod differences
     environment: str = Field(default="development", description="Runtime environment: development | production")
 
-    # SMTP / Email Settings
+    # Email Settings
+    brevo_api_key: Optional[str] = Field(default=None, description="Brevo transactional email API key")
+    email_from: str = Field(default="noreply@eventai.pk", description="Default sender email address")
+    email_from_name: str = Field(default="Event-AI", description="Sender display name")
+
+    # SMTP Settings (fallback when BREVO_API_KEY is not set)
     smtp_host: Optional[str] = Field(default=None, description="SMTP server hostname")
     smtp_port: int = Field(default=587, description="SMTP server port")
     smtp_secure: bool = Field(default=False, description="Use TLS for SMTP connection")
     smtp_user: Optional[str] = Field(default=None, description="SMTP authentication username")
     smtp_password: Optional[str] = Field(default=None, description="SMTP authentication password")
-    email_from: str = Field(default="noreply@eventai.pk", description="Default sender email address")
 
     # CDN (Cloudflare R2 / AWS S3)
     cdn_provider: str = Field(default="r2", description="CDN provider: r2 or s3")
@@ -230,10 +234,15 @@ async def lifespan(app):
     for _et in (
         "booking.created", "booking.confirmed", "booking.cancelled",
         "booking.completed", "booking.rejected", "booking.status_changed",
+        "booking.counter_offered", "booking.quoted", "booking.accepted", "booking.counter_rejected",
         # Event domain events
         "event.created", "event.status_changed", "event.cancelled",
         # Vendor domain events
-        "vendor.approved", "vendor.rejected",
+        "vendor.approved", "vendor.rejected", "vendor.suspended",
+        # Subscription events
+        "subscription.granted", "subscription.revoked",
+        # Inquiry events
+        "inquiry.created",
     ):
         event_bus.subscribe(_et, notification_service.handle)
 

@@ -43,8 +43,7 @@ class TestRegister:
     @pytest.mark.asyncio
     async def test_register_success(self, client: AsyncClient):
         resp = await client.post(REGISTER_URL, json=reg_payload())
-        # Register returns 200 (JSONResponse overrides the 201 status_code on the decorator)
-        assert resp.status_code == 200
+        assert resp.status_code == 201
         data = resp.json()
         assert "access_token" in data
         assert "refresh_token" in data
@@ -126,9 +125,12 @@ class TestLogin:
 
 class TestMe:
     @pytest.mark.asyncio
-    async def test_me_with_valid_token(self, client: AsyncClient):
+    async def test_me_with_valid_token(self, client: AsyncClient, db_session):
+        from sqlalchemy import text as sa_text
         reg = await client.post(REGISTER_URL, json=reg_payload(email="me@example.com"))
         token = reg.json()["access_token"]
+        await db_session.execute(sa_text("UPDATE users SET email_verified = 1 WHERE email = 'me@example.com'"))
+        await db_session.commit()
         resp = await client.get(ME_URL, headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         data = resp.json()
@@ -287,3 +289,49 @@ class TestPasswordReset:
             json={"token": token, "new_password": "weak"},
         )
         assert resp.status_code == 422
+
+
+# ── Terms Acceptance ──────────────────────────────────────────────────────────
+
+ACCEPT_TERMS_URL = "/api/v1/users/accept-terms"
+JSON_LOGIN_URL = "/api/v1/users/login"
+
+
+class TestAcceptTerms:
+    @pytest.mark.asyncio
+    async def test_accept_terms_sets_timestamp(self, client: AsyncClient):
+        with patch("src.services.otp_service.otp_service.issue_otp", new_callable=AsyncMock):
+            reg = await client.post(REGISTER_URL, json=reg_payload(email="terms1@example.com"))
+        token = reg.json()["access_token"]
+        auth = {"Authorization": f"Bearer {token}"}
+
+        # Before acceptance — terms_accepted_at is None
+        me_resp = await client.get("/api/v1/users/me", headers=auth)
+        assert me_resp.status_code == 200
+        assert me_resp.json()["data"].get("terms_accepted_at") is None
+
+        resp = await client.post(ACCEPT_TERMS_URL, headers=auth)
+        assert resp.status_code == 200
+        assert resp.json()["success"] is True
+
+        # After acceptance — terms_accepted_at is set
+        me_resp2 = await client.get("/api/v1/users/me", headers=auth)
+        assert me_resp2.status_code == 200
+        assert me_resp2.json()["data"].get("terms_accepted_at") is not None
+
+    @pytest.mark.asyncio
+    async def test_accept_terms_idempotent(self, client: AsyncClient):
+        with patch("src.services.otp_service.otp_service.issue_otp", new_callable=AsyncMock):
+            reg = await client.post(REGISTER_URL, json=reg_payload(email="terms2@example.com"))
+        token = reg.json()["access_token"]
+        auth = {"Authorization": f"Bearer {token}"}
+
+        await client.post(ACCEPT_TERMS_URL, headers=auth)
+        resp = await client.post(ACCEPT_TERMS_URL, headers=auth)
+        assert resp.status_code == 200
+        assert resp.json()["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_accept_terms_unauthenticated(self, client: AsyncClient):
+        resp = await client.post(ACCEPT_TERMS_URL)
+        assert resp.status_code == 401

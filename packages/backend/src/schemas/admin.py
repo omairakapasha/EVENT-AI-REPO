@@ -65,6 +65,8 @@ class AdminUserRead(SQLModel):
     last_login_at: Optional[datetime] = None
     created_at: datetime
     vendor: Optional[AdminUserVendorSummary] = None
+    subscription_status: str = "free"
+    subscription_expires_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 

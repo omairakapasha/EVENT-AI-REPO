@@ -49,7 +49,6 @@ class OTPService:
         # Atomically store hash in Redis, overwriting any previous key, TTL=600s
         await redis.set(f"otp:{user_id}", code_hash, ex=OTP_EXPIRY_SECONDS)
 
-        # Send email via Brevo SMTP
         subject = "Your Event-AI verification code"
         display_name = user_name or user_email
         otp_expiry_minutes = OTP_EXPIRY_SECONDS // 60

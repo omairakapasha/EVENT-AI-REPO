@@ -25,8 +25,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Drop the email_otps table — OTP state is now stored in Redis."""
-    op.drop_index("ix_email_otps_user_id", table_name="email_otps")
-    op.drop_table("email_otps")
+    op.execute("DROP INDEX IF EXISTS ix_email_otps_user_id")
+    op.execute("DROP TABLE IF EXISTS email_otps")
 
 
 def downgrade() -> None:

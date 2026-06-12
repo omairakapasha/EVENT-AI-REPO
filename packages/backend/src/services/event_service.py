@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.event import Event, EventType, EventStatus
 from src.models.booking import Booking, BookingStatus
+from src.models.user import SubscriptionStatus, User
 from src.schemas.event import EventCreate, EventUpdate
 from src.services.event_bus_service import event_bus
 import structlog
@@ -48,6 +49,28 @@ class EventService:
             )
         return event
 
+    async def _enforce_free_plan_event_limit(
+        self, session: AsyncSession, user_id: uuid.UUID
+    ) -> None:
+        user = await session.get(User, user_id)
+        if user is None or user.subscription_status != SubscriptionStatus.free:
+            return
+        count = (
+            await session.execute(
+                select(func.count())
+                .select_from(Event)
+                .where(Event.user_id == user_id, Event.status != EventStatus.CANCELED)
+            )
+        ).scalar() or 0
+        if count >= 3:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=_err(
+                    "SUBSCRIPTION_LIMIT_EXCEEDED",
+                    "Free plan allows only 3 active events. Upgrade to Pro for unlimited events.",
+                ),
+            )
+
     async def _get_active_event_type(
         self, session: AsyncSession, event_type_id: uuid.UUID
     ) -> EventType:
@@ -68,6 +91,7 @@ class EventService:
         user_id: uuid.UUID,
     ) -> Event:
         """Validate event_type, create Event with status=PLANNED, emit event.created."""
+        await self._enforce_free_plan_event_limit(session, user_id)
         await self._get_active_event_type(session, event_in.event_type_id)
 
         event = Event(
@@ -262,6 +286,7 @@ class EventService:
         user_id: uuid.UUID,
     ) -> Event:
         source = await self._get_event_or_404(session, event_id, user_id)
+        await self._enforce_free_plan_event_limit(session, user_id)
 
         new_event = Event(
             user_id=user_id,

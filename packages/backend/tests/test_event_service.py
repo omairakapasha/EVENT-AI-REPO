@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import HTTPException
 
 from src.models.event import Event, EventType, EventStatus
+from src.models.user import SubscriptionStatus, User
 from src.schemas.event import EventCreate, EventUpdate
 from src.services.event_service import EventService, VALID_TRANSITIONS, TERMINAL_STATUSES
 
@@ -39,13 +40,31 @@ def make_event(
     )
 
 
-def make_session(event: Event = None) -> AsyncMock:
+def make_user(status: SubscriptionStatus = SubscriptionStatus.pro) -> MagicMock:
+    u = MagicMock(spec=User)
+    u.id = uuid.uuid4()
+    u.subscription_status = status
+    u.subscription_expires_at = None
+    return u
+
+
+def make_session(event: Event = None, user: User = None) -> AsyncMock:
     session = AsyncMock()
-    session.get = AsyncMock(return_value=event)
+
+    async def _get(model, pk):
+        if model is User:
+            return user
+        return event
+
+    session.get = AsyncMock(side_effect=_get)
     session.flush = AsyncMock()
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
     session.add = MagicMock()
+    # Default execute mock — returns scalar() == 0 (used by count queries)
+    _exec_result = MagicMock()
+    _exec_result.scalar = MagicMock(return_value=0)
+    session.execute = AsyncMock(return_value=_exec_result)
     return session
 
 
@@ -129,12 +148,22 @@ async def test_create_event_emits_event_created():
         id=et_id, name="Wedding", display_order=1, is_active=True,
         created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
     )
+    pro_user = make_user(SubscriptionStatus.pro)
     session = AsyncMock()
-    session.get = AsyncMock(return_value=event_type)
+
+    async def _get(model, pk):
+        if model is User:
+            return pro_user
+        return event_type
+
+    session.get = AsyncMock(side_effect=_get)
     session.flush = AsyncMock()
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
     session.add = MagicMock()
+    _exec_result = MagicMock()
+    _exec_result.scalar = MagicMock(return_value=0)
+    session.execute = AsyncMock(return_value=_exec_result)
 
     event_in = EventCreate(
         event_type_id=et_id,
@@ -233,3 +262,137 @@ async def test_get_event_not_found_raises_404():
         await svc.get_event(session, uuid.uuid4(), uuid.uuid4())
 
     assert exc_info.value.status_code == 404
+
+
+# ── Free plan event limit ─────────────────────────────────────────────────────
+
+async def test_free_plan_create_event_allowed_when_no_existing_events():
+    svc = EventService()
+    user_id = uuid.uuid4()
+    et_id = uuid.uuid4()
+    free_user = make_user(SubscriptionStatus.free)
+    event_type = EventType(
+        id=et_id, name="Wedding", display_order=1, is_active=True,
+        created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
+    )
+
+    session = AsyncMock()
+
+    async def _get(model, pk):
+        if model is User:
+            return free_user
+        return event_type
+
+    session.get = AsyncMock(side_effect=_get)
+    session.flush = AsyncMock()
+    session.commit = AsyncMock()
+    session.refresh = AsyncMock()
+    session.add = MagicMock()
+    _exec_result = MagicMock()
+    _exec_result.scalar = MagicMock(return_value=0)  # no existing events
+    session.execute = AsyncMock(return_value=_exec_result)
+
+    event_in = EventCreate(
+        event_type_id=et_id,
+        name="My First Event",
+        start_date=datetime.now(timezone.utc) + timedelta(days=30),
+    )
+
+    with patch("src.services.event_service.event_bus.emit", new_callable=AsyncMock):
+        result = await svc.create_event(session, event_in, user_id)
+
+    assert result is not None
+
+
+async def test_free_plan_create_event_blocked_when_event_exists():
+    svc = EventService()
+    user_id = uuid.uuid4()
+    et_id = uuid.uuid4()
+    free_user = make_user(SubscriptionStatus.free)
+
+    session = AsyncMock()
+
+    async def _get(model, pk):
+        if model is User:
+            return free_user
+        return None
+
+    session.get = AsyncMock(side_effect=_get)
+    _exec_result = MagicMock()
+    _exec_result.scalar = MagicMock(return_value=3)  # at limit
+    session.execute = AsyncMock(return_value=_exec_result)
+
+    event_in = EventCreate(
+        event_type_id=et_id,
+        name="Second Event",
+        start_date=datetime.now(timezone.utc) + timedelta(days=30),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await svc.create_event(session, event_in, user_id)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail["code"] == "SUBSCRIPTION_LIMIT_EXCEEDED"
+
+
+async def test_pro_plan_create_event_allowed_regardless_of_count():
+    svc = EventService()
+    user_id = uuid.uuid4()
+    et_id = uuid.uuid4()
+    pro_user = make_user(SubscriptionStatus.pro)
+    event_type = EventType(
+        id=et_id, name="Wedding", display_order=1, is_active=True,
+        created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
+    )
+
+    session = AsyncMock()
+
+    async def _get(model, pk):
+        if model is User:
+            return pro_user
+        return event_type
+
+    session.get = AsyncMock(side_effect=_get)
+    session.flush = AsyncMock()
+    session.commit = AsyncMock()
+    session.refresh = AsyncMock()
+    session.add = MagicMock()
+    _exec_result = MagicMock()
+    _exec_result.scalar = MagicMock(return_value=99)  # many existing events
+    session.execute = AsyncMock(return_value=_exec_result)
+
+    event_in = EventCreate(
+        event_type_id=et_id,
+        name="Another Pro Event",
+        start_date=datetime.now(timezone.utc) + timedelta(days=30),
+    )
+
+    with patch("src.services.event_service.event_bus.emit", new_callable=AsyncMock):
+        result = await svc.create_event(session, event_in, user_id)
+
+    assert result is not None
+
+
+async def test_free_plan_duplicate_event_blocked():
+    svc = EventService()
+    user_id = uuid.uuid4()
+    source = make_event(status=EventStatus.ACTIVE, user_id=user_id)
+    free_user = make_user(SubscriptionStatus.free)
+
+    session = AsyncMock()
+
+    async def _get(model, pk):
+        if model is User:
+            return free_user
+        return source
+
+    session.get = AsyncMock(side_effect=_get)
+    _exec_result = MagicMock()
+    _exec_result.scalar = MagicMock(return_value=3)
+    session.execute = AsyncMock(return_value=_exec_result)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await svc.duplicate_event(session, source.id, user_id)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail["code"] == "SUBSCRIPTION_LIMIT_EXCEEDED"

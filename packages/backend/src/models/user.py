@@ -3,9 +3,15 @@ User and RefreshToken models for authentication.
 """
 import uuid
 from datetime import datetime
+from enum import Enum
 from typing import Optional
 from sqlmodel import SQLModel, Field, Column, DateTime
 from sqlalchemy import Boolean, Integer, String
+
+
+class SubscriptionStatus(str, Enum):
+    free = "free"
+    pro = "pro"
 
 
 class UserBase(SQLModel):
@@ -25,6 +31,9 @@ class User(UserBase, table=True):
     last_login_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True)))
     failed_login_attempts: int = Field(default=0)
     locked_until: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True)))
+    subscription_status: SubscriptionStatus = Field(default=SubscriptionStatus.free, sa_column=Column(String(20), default="free"))
+    subscription_expires_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True)))
+    terms_accepted_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True)))
     created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True)))
     updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime(timezone=True), onupdate=datetime.utcnow))
 
@@ -42,6 +51,9 @@ class UserRead(SQLModel):
     is_active: bool
     email_verified: bool
     last_login_at: Optional[datetime]
+    subscription_status: SubscriptionStatus
+    subscription_expires_at: Optional[datetime]
+    terms_accepted_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime
 

@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+import sqlmodel
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -67,9 +68,12 @@ def upgrade() -> None:
     op.create_index(op.f('ix_events_id'), 'events', ['id'], unique=False)
     op.drop_constraint(op.f('events_user_id_fkey'), 'events', type_='foreignkey')
     op.create_foreign_key(None, 'events', 'users', ['user_id'], ['id'])
+    notification_type_enum = sa.Enum('booking_created', 'booking_confirmed', 'booking_cancelled', 'booking_completed', 'booking_rejected', 'booking_status_changed', 'system', 'event_created', 'event_status_changed', 'event_cancelled', 'vendor_approved', 'vendor_rejected', name='notificationtype')
+    notification_type_enum.create(op.get_bind(), checkfirst=True)
     op.alter_column('notifications', 'type',
                existing_type=sa.TEXT(),
-               type_=sa.Enum('booking_created', 'booking_confirmed', 'booking_cancelled', 'booking_completed', 'booking_rejected', 'booking_status_changed', 'system', 'event_created', 'event_status_changed', 'event_cancelled', 'vendor_approved', 'vendor_rejected', name='notificationtype'),
+               type_=postgresql.ENUM('booking_created', 'booking_confirmed', 'booking_cancelled', 'booking_completed', 'booking_rejected', 'booking_status_changed', 'system', 'event_created', 'event_status_changed', 'event_cancelled', 'vendor_approved', 'vendor_rejected', name='notificationtype', create_type=False),
+               postgresql_using='type::notificationtype',
                existing_nullable=False)
     op.alter_column('notifications', 'body',
                existing_type=sa.TEXT(),
@@ -154,9 +158,11 @@ def downgrade() -> None:
                type_=sa.TEXT(),
                existing_nullable=False)
     op.alter_column('notifications', 'type',
-               existing_type=sa.Enum('booking_created', 'booking_confirmed', 'booking_cancelled', 'booking_completed', 'booking_rejected', 'booking_status_changed', 'system', 'event_created', 'event_status_changed', 'event_cancelled', 'vendor_approved', 'vendor_rejected', name='notificationtype'),
+               existing_type=postgresql.ENUM('booking_created', 'booking_confirmed', 'booking_cancelled', 'booking_completed', 'booking_rejected', 'booking_status_changed', 'system', 'event_created', 'event_status_changed', 'event_cancelled', 'vendor_approved', 'vendor_rejected', name='notificationtype', create_type=False),
                type_=sa.TEXT(),
+               postgresql_using='type::text',
                existing_nullable=False)
+    sa.Enum(name='notificationtype').drop(op.get_bind(), checkfirst=True)
     op.drop_constraint(None, 'events', type_='foreignkey')
     op.create_foreign_key(op.f('events_user_id_fkey'), 'events', 'users', ['user_id'], ['id'], ondelete='CASCADE')
     op.drop_index(op.f('ix_events_id'), table_name='events')

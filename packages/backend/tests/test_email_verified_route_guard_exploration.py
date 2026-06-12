@@ -35,7 +35,7 @@ async def _register_and_login_unverified(client: AsyncClient, email: str) -> str
         "email": email, "password": "StrongPass123!",
         "first_name": "Unverified", "last_name": "User",
     })
-    assert reg.status_code == 200, f"Registration failed: {reg.status_code} {reg.text}"
+    assert reg.status_code == 201, f"Registration failed: {reg.status_code} {reg.text}"
 
     login = await client.post(
         LOGIN_URL,

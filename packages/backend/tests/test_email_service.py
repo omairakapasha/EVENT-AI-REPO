@@ -65,7 +65,7 @@ class TestEmailService:
         service = EmailService()
         service._smtp_configured = True
 
-        with patch.object(service, "_send_smtp_email", new_callable=AsyncMock) as mock_send:
+        with patch.object(service, "_send_smtp", new_callable=AsyncMock) as mock_send:
             mock_send.return_value = True
             result = await service.send_email(
                 to="test@example.com",

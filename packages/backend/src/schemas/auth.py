@@ -59,6 +59,9 @@ class UserRead(BaseModel):
     is_active: bool
     email_verified: bool
     last_login_at: Optional[datetime]
+    subscription_status: str = "free"
+    subscription_expires_at: Optional[datetime] = None
+    terms_accepted_at: Optional[datetime] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True, json_schema_extra={
@@ -71,6 +74,8 @@ class UserRead(BaseModel):
             "is_active": True,
             "email_verified": False,
             "last_login_at": "2026-04-09T10:30:00Z",
+            "subscription_status": "free",
+            "subscription_expires_at": None,
             "created_at": "2026-04-08T14:22:00Z"
         }
     })
@@ -213,6 +218,7 @@ class UserTokenData(BaseModel):
     role: str
     is_active: bool
     email_verified: bool
+    terms_accepted_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

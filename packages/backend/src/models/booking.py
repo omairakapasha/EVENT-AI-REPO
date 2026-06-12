@@ -10,6 +10,10 @@ from sqlmodel import SQLModel, Field, Column, String, JSON
 
 class BookingStatus(str, Enum):
     pending = "pending"
+    quoted = "quoted"
+    negotiating = "negotiating"
+    accepted = "accepted"
+    awaiting_deposit = "awaiting_deposit"
     confirmed = "confirmed"
     in_progress = "in_progress"
     completed = "completed"
@@ -61,7 +65,7 @@ class BookingBase(SQLModel):
     # Pricing
     unit_price: float
     total_price: float
-    currency: str = Field(default="USD", max_length=3)
+    currency: str = Field(default="PKR", max_length=3)
     
     # Payment
     payment_status: PaymentStatus = Field(default=PaymentStatus.pending)
@@ -86,7 +90,14 @@ class Booking(BookingBase, table=True):
 
 # API Parsing Models
 class BookingCreate(BookingBase):
-    pass
+    # unit_price and total_price are computed by the service from the service
+    # catalogue — the frontend never sends them.  Make them optional here so
+    # Pydantic validation passes; booking_service.create_booking() overwrites
+    # them with the correct values anyway.
+    unit_price: float = 0.0
+    total_price: float = 0.0
+
+    model_config = {"populate_by_name": True}  # accept snake_case from DB reads
 
 class BookingRead(BookingBase):
     id: uuid.UUID
