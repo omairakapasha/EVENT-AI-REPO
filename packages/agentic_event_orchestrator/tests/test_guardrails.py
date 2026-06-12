@@ -7,7 +7,6 @@ from services.prompt_firewall import PromptFirewall, FirewallResult
 from services.output_leak_detector import OutputLeakDetector, LeakScanResult
 
 
-
 class TestPromptFirewall:
     """Tests for PromptFirewall 7-layer defense."""
     

@@ -30,7 +30,7 @@ import pytest
 import respx
 from agents.tool_context import ToolContext
 from agents.usage import Usage
-from hypothesis import HealthCheck, given, settings, strategies as st
+from hypothesis import HealthCheck, assume, given, settings, strategies as st
 
 from conftest import (
     AgentContext,
@@ -41,12 +41,14 @@ from conftest import (
     users_table,
     vendors_table,
 )
-from sqlalchemy import insert, select
+from sqlalchemy import insert, select, text as sa_text
 
 # ---------------------------------------------------------------------------
 # Import the FunctionTool objects under test (unfixed versions)
 # ---------------------------------------------------------------------------
 from tools.event_tools import (
+    _EVENT_TYPE_ALIASES,
+    _resolve_event_type_alias,
     create_event,
     get_event_details,
     get_user_events,
@@ -556,6 +558,29 @@ class TestPreservationProperties:
         returns {"success": False, "error": <connection error>}.
         After the fix the DB lookup fails and returns the same shape.
         """
+        # create_event resolves event_type via three passes: exact match,
+        # substring match (>=3 chars) against event_types.name, then the
+        # static alias map. The fixed exclusion set on `unknown_type` above
+        # only covers a handful of canonical names — it misses the dozens of
+        # other alias keys (e.g. "nikah", "bday") and any UUID-suffixed rows
+        # left in event_types by other tests sharing this session-scoped DB.
+        # Skip any example that would genuinely resolve via one of those
+        # passes, so this test only exercises truly-unknown inputs.
+        assume(_resolve_event_type_alias(unknown_type) is None)
+
+        ut_lower = unknown_type.strip().lower()
+        existing_rows = (await db_session.execute(
+            sa_text("SELECT name FROM event_types")
+        )).fetchall()
+        candidate_names = set(_EVENT_TYPE_ALIASES.values()) | {
+            row.name for row in existing_rows
+        }
+        for name in candidate_names:
+            name_lower = name.lower()
+            assume(ut_lower != name_lower)
+            if len(ut_lower) >= 3:
+                assume(ut_lower not in name_lower)
+
         user_id = uuid.uuid4()
         await _seed_user(db_session, user_id)
         await db_session.flush()

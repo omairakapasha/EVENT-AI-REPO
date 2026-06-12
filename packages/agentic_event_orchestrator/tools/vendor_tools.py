@@ -181,10 +181,25 @@ async def _db_fetch_vendor_availability(db, vendor_id: str, event_date: str, ser
     return False # Booked or Blocked
 
 
+# ── Chat→Booking bridge helper ────────────────────────────────────────────────
+
+def _merge_vendor_suggestions(agent_ctx: AgentContext | None, vendors: list) -> None:
+    """Deduplicate and accumulate vendor dicts in context for the booking bridge."""
+    if agent_ctx is None:
+        return
+    existing_ids = {v.get("id") for v in agent_ctx.vendor_suggestions}
+    for v in vendors:
+        vid = v.get("id")
+        if vid and vid not in existing_ids:
+            agent_ctx.vendor_suggestions.append(v)
+            existing_ids.add(vid)
+
+
 # ── HTTP Search Tools ─────────────────────────────────────────────────────────
 
 @function_tool
 async def search_vendors(
+    ctx: RunContextWrapper[AgentContext],
     event_type: str,
     location: str,
     budget_pkr: Optional[float] = None,
@@ -217,7 +232,9 @@ async def search_vendors(
             if resp.status_code == 200:
                 data = resp.json()
                 vendors = data.get("data", data.get("vendors", []))
-                return json.dumps({"vendors": vendors[:limit], "total": len(vendors)})
+                result = vendors[:limit]
+                _merge_vendor_suggestions(ctx.context, result)
+                return json.dumps({"vendors": result, "total": len(vendors)})
             if resp.status_code in (401, 403):
                 return json.dumps({"vendors": [], "error": "Service authentication failed. Check SERVICE_SECRET configuration."})
             if resp.status_code == 503:
@@ -236,6 +253,7 @@ async def search_vendors(
 
 @function_tool
 async def get_vendor_recommendations(
+    ctx: RunContextWrapper[AgentContext],
     event_type: str,
     location: str,
     budget_pkr: float,
@@ -255,6 +273,7 @@ async def get_vendor_recommendations(
             if resp.status_code == 200:
                 data = resp.json()
                 vendors = data.get("data", [])
+                _merge_vendor_suggestions(ctx.context, vendors)
                 return json.dumps({"recommendations": vendors, "event_type": event_type, "location": location})
             return json.dumps({"recommendations": [], "error": f"Backend returned {resp.status_code}"})
     except Exception as e:
@@ -272,6 +291,7 @@ async def get_vendor_details(ctx: RunContextWrapper[AgentContext], vendor_id: st
         vendor_data = await _db_fetch_vendor_details(db, vendor_id)
         if not vendor_data:
             return _err("Vendor not found or not active")
+        _merge_vendor_suggestions(ctx.context, [vendor_data])
         return json.dumps(vendor_data)
     except Exception as e:
         return _err(f"Database error: {str(e)}")

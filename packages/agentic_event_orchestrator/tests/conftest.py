@@ -14,6 +14,7 @@ from typing import AsyncGenerator, Callable
 
 import pytest
 import pytest_asyncio
+import services.prompt_firewall as prompt_firewall_module
 from agents.tool_context import ToolContext
 from sqlalchemy import (
     Boolean,
@@ -41,6 +42,7 @@ class AgentContext:
     """Minimal context threaded through RunContext[AgentContext] into tools."""
     db: AsyncSession
     user_id: uuid.UUID
+    vendor_suggestions: list = dataclasses.field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -172,7 +174,11 @@ vendor_availability_table = Table(
     Column("service_id", String(36), ForeignKey("services.id")),
     Column("date", String(50), nullable=False),
     Column("status", String(50), default="available"),
+    Column("locked_by", String(36)),
     Column("locked_until", DateTime),
+    Column("locked_reason", String(255)),
+    Column("booking_id", String(36), ForeignKey("bookings.id")),
+    Column("notes", String(500)),
     Column("created_at", DateTime, default=datetime.utcnow),
     Column("updated_at", DateTime, default=datetime.utcnow),
 )
@@ -181,6 +187,12 @@ vendor_availability_table = Table(
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def _disable_semantic_layer(monkeypatch):
+    """Layer 5 (sentence-transformers) downloads a model on first use — block
+    that here so PromptFirewall() construction never hits the network."""
+    monkeypatch.setattr(prompt_firewall_module, "_SENTENCE_TRANSFORMERS_AVAILABLE", False)
 
 @pytest.fixture(scope="session")
 def engine():

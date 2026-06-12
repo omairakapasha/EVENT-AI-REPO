@@ -222,6 +222,7 @@ async def chat(
             "agent": agent_name,
             "session_id": str(chat_session.id),
             "guardrail_triggered": False,
+            "vendor_suggestions": agent_ctx.vendor_suggestions[:6] if agent_ctx.vendor_suggestions else [],
         }
     })
 
@@ -370,6 +371,10 @@ async def chat_stream(
             )
         except Exception as e:
             logger.warning("Mem0 streaming turn save failed — skipping: %s", e)
+
+        # Emit structured vendor suggestions for the chat→booking UI bridge
+        if agent_ctx.vendor_suggestions:
+            yield {"data": json.dumps({"vendors": agent_ctx.vendor_suggestions[:6], "agent": agent_name})}
 
         yield {"data": json.dumps({"done": True, "session_id": str(chat_session.id), "agent": agent_name})}
 

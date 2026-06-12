@@ -77,12 +77,49 @@ async def create_booking_request(
                 "Please choose a different date."
             )
 
+        # Check the availability slot — mirrors booking_service._acquire_lock so the
+        # chat flow honours the same booked/locked states as the REST flow
+        now = datetime.now(timezone.utc)
+        avail_result = await db.execute(
+            sa_text(
+                "SELECT id, status, locked_until FROM vendor_availability "
+                "WHERE vendor_id = :vendor_id AND service_id = :service_id AND date = :event_date LIMIT 1"
+            ),
+            {"vendor_id": vendor_id, "service_id": service_id, "event_date": event_date},
+        )
+        avail_row = avail_result.fetchone()
+        if avail_row:
+            if avail_row.status == "booked":
+                return _err(
+                    f"This vendor service is already booked for {event_date}. "
+                    "Please choose a different date."
+                )
+            if avail_row.status == "blocked":
+                return _err(
+                    f"The vendor is not available on {event_date}. "
+                    "Please choose a different date."
+                )
+            if avail_row.status == "locked":
+                locked_until = avail_row.locked_until
+                if locked_until is None:
+                    return _err(
+                        f"This date is pending vendor confirmation for another request. "
+                        "Please choose a different date."
+                    )
+                if isinstance(locked_until, str):
+                    locked_until = datetime.fromisoformat(locked_until)
+                if locked_until.tzinfo is None:
+                    locked_until = locked_until.replace(tzinfo=timezone.utc)
+                if locked_until > now:
+                    return _err(
+                        "This date is temporarily held by another request. Please try again shortly."
+                    )
+
         unit_price = float(svc_row.price_min or 0.0)
         qty = max(1, min(quantity, 10000))
         total_price = unit_price * qty
 
         booking_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc)
 
         await db.execute(
             sa_text(
@@ -113,6 +150,74 @@ async def create_booking_request(
                 "updated_at": now,
             },
         )
+
+        # Hold the slot for this pending request — locked pending vendor confirmation,
+        # not yet booked. Becomes 'booked' only when the vendor confirms (booking_service
+        # ._confirm_lock) and is released back to 'available' on reject/cancel.
+        if avail_row:
+            await db.execute(
+                sa_text(
+                    "UPDATE vendor_availability SET status = 'locked', locked_by = NULL, "
+                    "locked_until = NULL, locked_reason = 'pending_vendor_confirmation', "
+                    "booking_id = :booking_id, updated_at = :now WHERE id = :id"
+                ),
+                {"booking_id": booking_id, "now": now, "id": avail_row.id},
+            )
+        else:
+            await db.execute(
+                sa_text(
+                    "INSERT INTO vendor_availability "
+                    "(id, vendor_id, service_id, date, status, locked_by, locked_until, "
+                    " locked_reason, booking_id, created_at, updated_at) "
+                    "VALUES (:id, :vendor_id, :service_id, :event_date, 'locked', NULL, NULL, "
+                    "        'pending_vendor_confirmation', :booking_id, :now, :now)"
+                ),
+                {
+                    "id": str(uuid.uuid4()),
+                    "vendor_id": vendor_id,
+                    "service_id": service_id,
+                    "event_date": event_date,
+                    "booking_id": booking_id,
+                    "now": now,
+                },
+            )
+
+        # Notify the vendor — mirrors notification_service's "booking.created" vendor notice.
+        # The orchestrator runs cross-process from the backend, so the in-process event bus
+        # cannot be invoked; write the notification row directly instead.
+        try:
+            vendor_result = await db.execute(
+                sa_text("SELECT user_id FROM vendors WHERE id = :vendor_id LIMIT 1"),
+                {"vendor_id": vendor_id},
+            )
+            vendor_row = vendor_result.fetchone()
+            if vendor_row:
+                await db.execute(
+                    sa_text(
+                        "INSERT INTO notifications "
+                        "(id, user_id, type, title, body, data, is_read, created_at) "
+                        "VALUES (:id, :user_id, :type, :title, :body, :data, :is_read, :created_at)"
+                    ),
+                    {
+                        "id": str(uuid.uuid4()),
+                        "user_id": str(vendor_row.user_id),
+                        "type": "booking_created",
+                        "title": "New Booking Request",
+                        "body": f"You have a new booking request for {event_name} on {event_date}.",
+                        "data": json.dumps({
+                            "booking_id": booking_id,
+                            "vendor_id": vendor_id,
+                            "service_id": service_id,
+                            "event_date": event_date,
+                            "user_id": str(user_id),
+                        }),
+                        "is_read": False,
+                        "created_at": now,
+                    },
+                )
+        except Exception as notif_err:
+            logger.warning("create_booking_request.notification_write_failed: %s", notif_err)
+
         await db.flush()
         await db.commit()
 
@@ -343,6 +448,49 @@ async def submit_counter_offer(
         await db.flush()
         await db.commit()
 
+        # Write vendor notification directly — agent runs in orchestrator process,
+        # so backend's in-process event bus cannot be called cross-process.
+        # Notification appears for the vendor on next poll / window focus.
+        try:
+            vendor_result = await db.execute(
+                sa_text(
+                    "SELECT v.user_id FROM bookings b "
+                    "JOIN vendors v ON v.id = b.vendor_id "
+                    "WHERE b.id = :booking_id LIMIT 1"
+                ),
+                {"booking_id": str(quote_row.booking_id)},
+            )
+            vendor_row = vendor_result.fetchone()
+            if vendor_row:
+                notif_id = str(uuid.uuid4())
+                notif_body = (
+                    f"Customer proposed PKR {proposed_total_pkr:,.0f} on your quote."
+                )
+                await db.execute(
+                    sa_text(
+                        "INSERT INTO notifications "
+                        "(id, user_id, type, title, body, data, is_read, created_at) "
+                        "VALUES (:id, :user_id, :type, :title, :body, :data, :is_read, :created_at)"
+                    ),
+                    {
+                        "id": notif_id,
+                        "user_id": str(vendor_row.user_id),
+                        "type": "booking_counter_offered",
+                        "title": "Customer Counter-Offer",
+                        "body": notif_body,
+                        "data": json.dumps({
+                            "booking_id": str(quote_row.booking_id),
+                            "quote_id": quote_id,
+                            "proposed_total": proposed_total_pkr,
+                        }),
+                        "is_read": False,
+                        "created_at": now,
+                    },
+                )
+                await db.commit()
+        except Exception as notif_err:
+            logger.warning("submit_counter_offer.notification_write_failed: %s", notif_err)
+
         return json.dumps({
             "success": True,
             "counter_offer_id": counter_id,
@@ -371,7 +519,7 @@ async def cancel_booking(
         # Fetch current status and verify ownership
         result = await db.execute(
             sa_text(
-                "SELECT id, status FROM bookings "
+                "SELECT id, status, vendor_id, service_id, event_date, payment_status FROM bookings "
                 "WHERE id = :booking_id AND user_id = :user_id LIMIT 1"
             ),
             {"booking_id": booking_id, "user_id": str(user_id)},
@@ -388,19 +536,45 @@ async def cancel_booking(
             )
 
         now = datetime.now(timezone.utc)
+
+        # Reverse any payment already taken (e.g. Pro auto-pay on confirm) on a dead booking —
+        # mirrors booking_service.update_status's reject/cancel branch
+        new_payment_status = row.payment_status
+        if row.payment_status in ("paid", "partial"):
+            new_payment_status = "refunded"
+
         await db.execute(
             sa_text(
                 "UPDATE bookings SET status = 'cancelled', "
-                "cancellation_reason = :reason, cancelled_at = :now, updated_at = :now "
+                "cancellation_reason = :reason, cancelled_at = :now, updated_at = :now, "
+                "payment_status = :payment_status "
                 "WHERE id = :booking_id AND user_id = :user_id"
             ),
             {
                 "reason": reason[:300],
                 "now": now,
+                "payment_status": new_payment_status,
                 "booking_id": booking_id,
                 "user_id": str(user_id),
             },
         )
+
+        # Release the held/booked availability slot back to available — mirrors
+        # booking_service._release_slot
+        await db.execute(
+            sa_text(
+                "UPDATE vendor_availability SET status = 'available', locked_by = NULL, "
+                "locked_until = NULL, locked_reason = NULL, booking_id = NULL, updated_at = :now "
+                "WHERE vendor_id = :vendor_id AND service_id = :service_id AND date = :event_date"
+            ),
+            {
+                "now": now,
+                "vendor_id": str(row.vendor_id),
+                "service_id": str(row.service_id),
+                "event_date": row.event_date,
+            },
+        )
+
         await db.flush()
         await db.commit()
 

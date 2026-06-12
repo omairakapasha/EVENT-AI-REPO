@@ -8,8 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from openai import AsyncOpenAI
-from agents import set_tracing_disabled, OpenAIChatCompletionsModel, ModelSettings
-from agents.run import RunConfig
+from agents import set_tracing_disabled, OpenAIChatCompletionsModel, ModelSettings, RunConfig
 
 from config.settings import get_settings
 
@@ -46,7 +45,9 @@ async def lifespan(app: FastAPI):
 
     # DB — use async_database_url (sslmode stripped); pass SSL via connect_args
     connect_args = {"ssl": "require"} if settings.ssl_required else {}
-    engine = create_async_engine(settings.async_database_url, echo=False, connect_args=connect_args)
+    engine = create_async_engine(
+        settings.async_database_url, echo=False, pool_pre_ping=True, connect_args=connect_args
+    )
     session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
     # Shared HTTP client
@@ -65,11 +66,22 @@ async def lifespan(app: FastAPI):
         openai_client=gemini_client,
     )
 
-    # RunConfig — model + default settings; agents SDK v0.8.3 handles
-    # retries internally via the OpenAI client's built-in retry logic.
+    # RunConfig — model + thinking-budget via extra_body (Chat Completions path).
+    # Reasoning(effort=...) is Responses-API-only and does not apply to Gemini.
+    # extra_body is forwarded verbatim to the REST endpoint body.
     run_config = RunConfig(
         model=model,
-        model_settings=ModelSettings(),
+        model_settings=ModelSettings(
+            temperature=settings.model_temperature,
+            max_tokens=settings.model_max_tokens,
+            extra_body={
+                "generationConfig": {
+                    "thinkingConfig": {
+                        "thinkingBudget": settings.thinking_budget,
+                    }
+                }
+            },
+        ),
     )
 
     # Canary token — generated at startup, never stored in .env or any file

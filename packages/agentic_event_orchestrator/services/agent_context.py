@@ -30,7 +30,12 @@ class AgentContext:
     user_id : uuid.UUID
         The UUID of the authenticated user making the request.
         Tools use this to scope queries and enforce ownership.
+    vendor_suggestions : list
+        Vendor dicts collected by vendor tools during this run.
+        The chat router reads this after the stream completes and emits
+        a structured SSE event so the UI can render booking cards.
     """
 
     db: AsyncSession
     user_id: uuid.UUID
+    vendor_suggestions: list = dataclasses.field(default_factory=list)

@@ -20,8 +20,10 @@ from sqlalchemy.orm import sessionmaker
 from tools.booking_tools import (
     cancel_booking,
     create_booking_request,
+    get_active_quotes,
     get_booking_details,
     get_my_bookings,
+    submit_counter_offer,
 )
 
 # ── Minimal AgentContext stub ─────────────────────────────────────────────────
@@ -94,6 +96,64 @@ _bookings = Table(
     Column("payment_status", String(50), default="pending"),
     Column("cancellation_reason", String(300)),
     Column("cancelled_at", DateTime),
+    Column("created_at", DateTime),
+    Column("updated_at", DateTime),
+)
+
+_quotes = Table(
+    "quotes", _meta,
+    Column("id", String(36), primary_key=True),
+    Column("booking_id", String(36), ForeignKey("bookings.id"), nullable=True),
+    Column("vendor_id", String(36), ForeignKey("vendors.id"), nullable=False),
+    Column("subtotal", Float, nullable=False),
+    Column("deposit_required", Float, default=0.0),
+    Column("currency", String(3), default="PKR"),
+    Column("status", String(50), default="sent"),
+    Column("valid_until", DateTime, nullable=True),
+    Column("round_number", Integer, default=1),
+    Column("notes", String(1000), nullable=True),
+    Column("created_at", DateTime),
+    Column("updated_at", DateTime),
+)
+
+_counter_offers = Table(
+    "counter_offers", _meta,
+    Column("id", String(36), primary_key=True),
+    Column("quote_id", String(36), ForeignKey("quotes.id"), nullable=False),
+    Column("proposed_by_user_id", String(36), ForeignKey("users.id"), nullable=False),
+    Column("proposed_total", Float, nullable=False),
+    Column("proposed_changes", String(1000), nullable=True),
+    Column("message", String(500), nullable=True),
+    Column("status", String(50), default="pending"),
+    Column("created_at", DateTime),
+    Column("updated_at", DateTime),
+)
+
+_notifications = Table(
+    "notifications", _meta,
+    Column("id", String(36), primary_key=True),
+    Column("user_id", String(36), ForeignKey("users.id"), nullable=False),
+    Column("type", String(100), nullable=False),
+    Column("title", String(255), nullable=False),
+    Column("body", String(2000), nullable=False),
+    Column("data", String(4000), nullable=True),
+    Column("is_read", Boolean, default=False),
+    Column("read_at", DateTime, nullable=True),
+    Column("created_at", DateTime),
+)
+
+_vendor_availability = Table(
+    "vendor_availability", _meta,
+    Column("id", String(36), primary_key=True),
+    Column("vendor_id", String(36), ForeignKey("vendors.id"), nullable=False),
+    Column("service_id", String(36), ForeignKey("services.id"), nullable=True),
+    Column("date", String(50), nullable=False),
+    Column("status", String(20), default="available"),
+    Column("locked_by", String(36), nullable=True),
+    Column("locked_until", DateTime, nullable=True),
+    Column("locked_reason", String(255), nullable=True),
+    Column("booking_id", String(36), ForeignKey("bookings.id"), nullable=True),
+    Column("notes", String(500), nullable=True),
     Column("created_at", DateTime),
     Column("updated_at", DateTime),
 )
@@ -236,6 +296,81 @@ class TestCreateBookingRequest:
         )
 
         assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_holds_availability_slot_pending_confirmation(self, db, make_ctx):
+        """Creating a booking via chat holds the slot — locked, not yet booked —
+        mirroring booking_service._hold_pending."""
+        from sqlalchemy import text as sa_text
+        user_id, vendor_id, service_id = await _seed(db)
+        ctx = make_ctx(user_id)
+
+        cr = await _call(
+            create_booking_request, ctx,
+            vendor_id=vendor_id, service_id=service_id,
+            event_date="2033-01-01", event_name="Aqiqah", guest_count=40,
+        )
+        assert cr["success"] is True
+
+        result = await db.execute(
+            sa_text(
+                "SELECT status, locked_until, booking_id FROM vendor_availability "
+                "WHERE vendor_id = :vendor_id AND service_id = :service_id AND date = :event_date"
+            ),
+            {"vendor_id": vendor_id, "service_id": service_id, "event_date": "2033-01-01"},
+        )
+        row = result.fetchone()
+        assert row is not None
+        assert row.status == "locked"
+        assert row.locked_until is None
+        assert row.booking_id == cr["booking_id"]
+
+    @pytest.mark.asyncio
+    async def test_writes_vendor_notification(self, db, make_ctx):
+        """Creating a booking via chat notifies the vendor — mirrors notification_service's
+        'booking.created' vendor notice, written directly since the orchestrator runs
+        cross-process from the backend's in-process event bus."""
+        from sqlalchemy import text as sa_text
+        user_id, vendor_id, service_id = await _seed(db)
+        ctx = make_ctx(user_id)
+
+        await _call(
+            create_booking_request, ctx,
+            vendor_id=vendor_id, service_id=service_id,
+            event_date="2033-02-01", event_name="Birthday", guest_count=60,
+        )
+
+        result = await db.execute(
+            sa_text("SELECT COUNT(*) FROM notifications WHERE type = 'booking_created'")
+        )
+        assert result.scalar() >= 1
+
+    @pytest.mark.asyncio
+    async def test_rejects_when_slot_pending_confirmation_for_other_booking(self, db, make_ctx):
+        """If the availability slot is already held pending confirmation for another
+        request, a new request for the same vendor/service/date is rejected — mirrors
+        booking_service._acquire_lock's CONFLICT_DATE_UNAVAILABLE check."""
+        from sqlalchemy import text as sa_text
+        user_id, vendor_id, service_id = await _seed(db)
+        ctx = make_ctx(user_id)
+        now = datetime.now(timezone.utc)
+
+        await db.execute(_vendor_availability.insert().values(
+            id=str(uuid.uuid4()), vendor_id=vendor_id, service_id=service_id,
+            date="2033-03-01", status="locked", locked_until=None,
+            locked_reason="pending_vendor_confirmation", booking_id=None,
+            created_at=now, updated_at=now,
+        ))
+        await db.commit()
+
+        result = await _call(
+            create_booking_request, ctx,
+            vendor_id=vendor_id, service_id=service_id,
+            event_date="2033-03-01", event_name="Conference", guest_count=20,
+        )
+
+        assert result["success"] is False
+        assert "pending vendor confirmation" in result["error"].lower()
 
 
 # ── Tests: get_my_bookings ────────────────────────────────────────────────────
@@ -418,3 +553,267 @@ class TestCancelBooking:
         result = await _call(cancel_booking, ctx_other, booking_id=cr["booking_id"])
 
         assert result["success"] is False
+
+    @pytest.mark.asyncio
+    async def test_cancel_releases_held_slot(self, db, make_ctx):
+        """Cancelling a pending booking releases its held availability slot back to
+        available — mirrors booking_service._release_slot."""
+        from sqlalchemy import text as sa_text
+        user_id, vendor_id, service_id = await _seed(db)
+        ctx = make_ctx(user_id)
+
+        cr = await _call(
+            create_booking_request, ctx,
+            vendor_id=vendor_id, service_id=service_id,
+            event_date="2031-03-01", event_name="Engagement", guest_count=80,
+        )
+        booking_id = cr["booking_id"]
+
+        result = await _call(cancel_booking, ctx, booking_id=booking_id, reason="Changed plans")
+        assert result["success"] is True
+
+        avail = await db.execute(
+            sa_text(
+                "SELECT status, booking_id FROM vendor_availability "
+                "WHERE vendor_id = :vendor_id AND service_id = :service_id AND date = :event_date"
+            ),
+            {"vendor_id": vendor_id, "service_id": service_id, "event_date": "2031-03-01"},
+        )
+        row = avail.fetchone()
+        assert row is not None
+        assert row.status == "available"
+        assert row.booking_id is None
+
+    @pytest.mark.asyncio
+    async def test_cancel_refunds_paid_booking(self, db, make_ctx):
+        """Cancelling a booking whose payment was already taken (e.g. Pro auto-pay on
+        confirm) flips payment_status to refunded — mirrors booking_service.update_status's
+        reject/cancel branch."""
+        from sqlalchemy import text as sa_text
+        user_id, vendor_id, service_id = await _seed(db)
+        ctx = make_ctx(user_id)
+
+        cr = await _call(
+            create_booking_request, ctx,
+            vendor_id=vendor_id, service_id=service_id,
+            event_date="2031-04-01", event_name="Reception", guest_count=120,
+        )
+        booking_id = cr["booking_id"]
+
+        await db.execute(
+            sa_text("UPDATE bookings SET payment_status = 'paid' WHERE id = :id"),
+            {"id": booking_id},
+        )
+        await db.commit()
+
+        result = await _call(cancel_booking, ctx, booking_id=booking_id)
+        assert result["success"] is True
+
+        row = (await db.execute(
+            sa_text("SELECT payment_status FROM bookings WHERE id = :id"),
+            {"id": booking_id},
+        )).fetchone()
+        assert row.payment_status == "refunded"
+
+
+# ── Helpers: seed quote & counter_offer ──────────────────────────────────────
+
+
+async def _seed_quote(db: AsyncSession, booking_id: str, vendor_id: str, status: str = "sent") -> str:
+    quote_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    await db.execute(_quotes.insert().values(
+        id=quote_id, booking_id=booking_id, vendor_id=vendor_id,
+        subtotal=100000.0, deposit_required=20000.0, currency="PKR",
+        status=status, round_number=1, created_at=now, updated_at=now,
+    ))
+    await db.commit()
+    return quote_id
+
+
+async def _seed_counter(db: AsyncSession, quote_id: str, user_id: str, count: int = 1) -> None:
+    now = datetime.now(timezone.utc)
+    for _ in range(count):
+        await db.execute(_counter_offers.insert().values(
+            id=str(uuid.uuid4()), quote_id=quote_id,
+            proposed_by_user_id=user_id, proposed_total=80000.0,
+            proposed_changes="{}", message="", status="pending",
+            created_at=now, updated_at=now,
+        ))
+    await db.commit()
+
+
+# ── Tests: get_active_quotes ──────────────────────────────────────────────────
+
+
+class TestGetActiveQuotes:
+    @pytest.mark.asyncio
+    async def test_returns_sent_quotes_for_user(self, db, make_ctx):
+        user_id, vendor_id, service_id = await _seed(db)
+        ctx = make_ctx(user_id)
+
+        cr = await _call(
+            create_booking_request, ctx,
+            vendor_id=vendor_id, service_id=service_id,
+            event_date="2032-01-01", event_name="Wedding", guest_count=300,
+        )
+        quote_id = await _seed_quote(db, cr["booking_id"], vendor_id, status="sent")
+
+        result = await _call(get_active_quotes, ctx)
+
+        assert result["total"] >= 1
+        ids = [q["id"] for q in result["quotes"]]
+        assert quote_id in ids
+
+    @pytest.mark.asyncio
+    async def test_empty_for_user_with_no_quotes(self, db, make_ctx):
+        user_id = uuid.uuid4()
+        now = datetime.now(timezone.utc)
+        await db.execute(_users.insert().values(
+            id=str(user_id), email=f"noquotes-{user_id}@test.com",
+            password_hash="x", created_at=now, updated_at=now,
+        ))
+        ctx = make_ctx(user_id)
+
+        result = await _call(get_active_quotes, ctx)
+
+        assert result["quotes"] == []
+        assert result["total"] == 0
+
+    @pytest.mark.asyncio
+    async def test_excludes_accepted_quotes(self, db, make_ctx):
+        user_id, vendor_id, service_id = await _seed(db)
+        ctx = make_ctx(user_id)
+
+        cr = await _call(
+            create_booking_request, ctx,
+            vendor_id=vendor_id, service_id=service_id,
+            event_date="2032-02-01", event_name="Mehndi", guest_count=150,
+        )
+        quote_id = await _seed_quote(db, cr["booking_id"], vendor_id, status="accepted")
+
+        result = await _call(get_active_quotes, ctx)
+
+        ids = [q["id"] for q in result["quotes"]]
+        assert quote_id not in ids
+
+
+# ── Tests: submit_counter_offer ───────────────────────────────────────────────
+
+
+class TestSubmitCounterOffer:
+    @pytest.mark.asyncio
+    async def test_counter_on_sent_quote_succeeds(self, db, make_ctx):
+        user_id, vendor_id, service_id = await _seed(db)
+        ctx = make_ctx(user_id)
+
+        cr = await _call(
+            create_booking_request, ctx,
+            vendor_id=vendor_id, service_id=service_id,
+            event_date="2032-03-01", event_name="Baraat", guest_count=200,
+        )
+        quote_id = await _seed_quote(db, cr["booking_id"], vendor_id, status="sent")
+
+        result = await _call(
+            submit_counter_offer, ctx,
+            quote_id=quote_id, proposed_total_pkr=80000.0, message="Can you do 80k?",
+        )
+
+        assert result["success"] is True
+        assert result["quote_status"] == "countered"
+        assert result["counter_offer_id"] is not None
+
+    @pytest.mark.asyncio
+    async def test_counter_on_non_sent_quote_fails(self, db, make_ctx):
+        user_id, vendor_id, service_id = await _seed(db)
+        ctx = make_ctx(user_id)
+
+        cr = await _call(
+            create_booking_request, ctx,
+            vendor_id=vendor_id, service_id=service_id,
+            event_date="2032-04-01", event_name="Walima", guest_count=100,
+        )
+        quote_id = await _seed_quote(db, cr["booking_id"], vendor_id, status="countered")
+
+        result = await _call(
+            submit_counter_offer, ctx,
+            quote_id=quote_id, proposed_total_pkr=70000.0,
+        )
+
+        assert result["success"] is False
+        assert "sent" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_counter_by_wrong_user_fails(self, db, make_ctx):
+        user_id, vendor_id, service_id = await _seed(db)
+        other_id = uuid.uuid4()
+        now = datetime.now(timezone.utc)
+        await db.execute(_users.insert().values(
+            id=str(other_id), email=f"intruder-{other_id}@test.com",
+            password_hash="x", created_at=now, updated_at=now,
+        ))
+        ctx_owner = make_ctx(user_id)
+        ctx_intruder = make_ctx(other_id)
+
+        cr = await _call(
+            create_booking_request, ctx_owner,
+            vendor_id=vendor_id, service_id=service_id,
+            event_date="2032-05-01", event_name="Nikah", guest_count=250,
+        )
+        quote_id = await _seed_quote(db, cr["booking_id"], vendor_id, status="sent")
+
+        result = await _call(
+            submit_counter_offer, ctx_intruder,
+            quote_id=quote_id, proposed_total_pkr=60000.0,
+        )
+
+        assert result["success"] is False
+        assert "authoris" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_counter_max_rounds_exceeded(self, db, make_ctx):
+        user_id, vendor_id, service_id = await _seed(db)
+        ctx = make_ctx(user_id)
+
+        cr = await _call(
+            create_booking_request, ctx,
+            vendor_id=vendor_id, service_id=service_id,
+            event_date="2032-06-01", event_name="Corporate", guest_count=50,
+        )
+        quote_id = await _seed_quote(db, cr["booking_id"], vendor_id, status="sent")
+        await _seed_counter(db, quote_id, str(user_id), count=5)
+
+        result = await _call(
+            submit_counter_offer, ctx,
+            quote_id=quote_id, proposed_total_pkr=90000.0,
+        )
+
+        assert result["success"] is False
+        assert "maximum" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_counter_writes_vendor_notification(self, db, make_ctx):
+        from sqlalchemy import text as sa_text
+        user_id, vendor_id, service_id = await _seed(db)
+        ctx = make_ctx(user_id)
+
+        cr = await _call(
+            create_booking_request, ctx,
+            vendor_id=vendor_id, service_id=service_id,
+            event_date="2032-07-01", event_name="Birthday", guest_count=80,
+        )
+        quote_id = await _seed_quote(db, cr["booking_id"], vendor_id, status="sent")
+
+        await _call(
+            submit_counter_offer, ctx,
+            quote_id=quote_id, proposed_total_pkr=75000.0, message="Budget is tight",
+        )
+
+        result = await db.execute(
+            sa_text(
+                "SELECT COUNT(*) FROM notifications "
+                "WHERE type = 'booking_counter_offered'"
+            )
+        )
+        count = result.scalar()
+        assert count >= 1

@@ -71,6 +71,18 @@ class Settings(BaseSettings):
     promptguard_threshold: float = 0.85
     alignment_threshold: float = 0.80
 
+    # Model tuning
+    thinking_budget: int = 0          # 0 = disable thinking; 1–24576 = cap tokens
+    model_temperature: float = 1.0
+    model_max_tokens: int = 8192
+
+    @field_validator("thinking_budget")
+    @classmethod
+    def validate_thinking_budget(cls, v: int) -> int:
+        if not (0 <= v <= 24576):
+            raise ValueError("thinking_budget must be between 0 and 24576")
+        return v
+
     # TruLens RAG evaluation
     trulens_enabled: bool = False
     trulens_groundedness_threshold: float = 0.70
