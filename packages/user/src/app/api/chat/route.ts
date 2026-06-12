@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
                     sessionId: data.session_id,
                 });
             }
-        } catch (agentError) {
+        } catch {
             console.log("Agent service not available, using Gemini fallback");
         }
 

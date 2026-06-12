@@ -54,7 +54,7 @@ function renderDashboard() {
 
 describe('Dashboard page', () => {
   it('renders stat cards with correct values on success', async () => {
-    mockUseDashboard.mockReturnValue({ data: mockDashboard, isLoading: false, isError: false, refetch: jest.fn() } as ReturnType<typeof useDashboard>)
+    mockUseDashboard.mockReturnValue({ data: mockDashboard, isLoading: false, isError: false, refetch: jest.fn() } as unknown as ReturnType<typeof useDashboard>)
     renderDashboard()
     await waitFor(() => expect(screen.getByText('42')).toBeInTheDocument())
     expect(screen.getByText('5')).toBeInTheDocument()
@@ -63,7 +63,7 @@ describe('Dashboard page', () => {
   })
 
   it('renders recent bookings table with service names', async () => {
-    mockUseDashboard.mockReturnValue({ data: mockDashboard, isLoading: false, isError: false, refetch: jest.fn() } as ReturnType<typeof useDashboard>)
+    mockUseDashboard.mockReturnValue({ data: mockDashboard, isLoading: false, isError: false, refetch: jest.fn() } as unknown as ReturnType<typeof useDashboard>)
     renderDashboard()
     await waitFor(() => expect(screen.getByText('Photography')).toBeInTheDocument())
     expect(screen.getByText('Catering')).toBeInTheDocument()
@@ -71,20 +71,20 @@ describe('Dashboard page', () => {
   })
 
   it('renders error state with retry button when request fails', async () => {
-    mockUseDashboard.mockReturnValue({ data: undefined, isLoading: false, isError: true, refetch: jest.fn() } as ReturnType<typeof useDashboard>)
+    mockUseDashboard.mockReturnValue({ data: undefined, isLoading: false, isError: true, refetch: jest.fn() } as unknown as ReturnType<typeof useDashboard>)
     renderDashboard()
     await waitFor(() => expect(screen.getByText(/failed to load/i)).toBeInTheDocument())
     expect(screen.getByText(/retry/i)).toBeInTheDocument()
   })
 
   it('renders loading skeletons while fetching', async () => {
-    mockUseDashboard.mockReturnValue({ data: undefined, isLoading: true, isError: false, refetch: jest.fn() } as ReturnType<typeof useDashboard>)
+    mockUseDashboard.mockReturnValue({ data: undefined, isLoading: true, isError: false, refetch: jest.fn() } as unknown as ReturnType<typeof useDashboard>)
     renderDashboard()
     expect(screen.getByText('Recent Bookings')).toBeInTheDocument()
   })
 
   it('renders the Recent Bookings heading', async () => {
-    mockUseDashboard.mockReturnValue({ data: mockDashboard, isLoading: false, isError: false, refetch: jest.fn() } as ReturnType<typeof useDashboard>)
+    mockUseDashboard.mockReturnValue({ data: mockDashboard, isLoading: false, isError: false, refetch: jest.fn() } as unknown as ReturnType<typeof useDashboard>)
     renderDashboard()
     await waitFor(() => expect(screen.getByText('Recent Bookings')).toBeInTheDocument())
   })

@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Bell, X, Check, CheckCheck, Clock, AlertCircle, Info, CheckCircle } from 'lucide-react';
+import { Bell, X, Check, CheckCheck, Clock, AlertCircle, Info, CheckCircle, type LucideIcon } from 'lucide-react';
 import { useNotifications } from './notification-provider';
 
-const typeConfig: Record<string, { icon: any; color: string; bg: string }> = {
+const typeConfig: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
     info: { icon: Info, color: 'text-blue-500', bg: 'bg-blue-50' },
     success: { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50' },
     warning: { icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-50' },
@@ -93,10 +93,10 @@ export function NotificationBell() {
                                             <p className={`text-sm ${!n.is_read ? 'font-medium text-gray-900' : 'text-gray-700'}`}>
                                                 {n.title}
                                             </p>
-                                            <p className="text-xs text-gray-500 mt-0.5 truncate">{(n as any).body}</p>
+                                            <p className="text-xs text-gray-500 mt-0.5 truncate">{n.message}</p>
                                             <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
                                                 <Clock className="h-2.5 w-2.5" />
-                                                {formatTime(new Date((n as any).created_at))}
+                                                {formatTime(new Date(n.created_at))}
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-1">

@@ -2,9 +2,30 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useMemo } from "react";
 import { getVendors } from "@/lib/api";
-import { Star, MapPin, Search, SlidersHorizontal, ChevronDown, X } from "lucide-react";
+import { Star, MapPin, Search, SlidersHorizontal, X } from "lucide-react";
+
+interface Vendor {
+    id: string;
+    name?: string;
+    business_name?: string;
+    category?: string;
+    businessType?: string;
+    rating?: number;
+    totalReviews?: number;
+    total_reviews?: number;
+    pricingMin?: number;
+    pricingMax?: number;
+    logoUrl?: string;
+    logo_url?: string;
+    verified?: boolean;
+    description?: string;
+    serviceAreas?: string[];
+    city?: string;
+    region?: string;
+}
 
 const CATEGORIES = [
     "All Categories",
@@ -45,16 +66,15 @@ export default function MarketplacePage() {
             }),
     });
 
-    // Extract vendors array from response envelope { success, data, meta }
-    const rawVendors = response?.data || [];
-
     // Client-side sort and category filter
     const vendors = useMemo(() => {
+        // Extract vendors array from response envelope { success, data, meta }
+        const rawVendors: Vendor[] = response?.data || [];
         let list = [...rawVendors];
 
         // Filter by category name (backend only accepts category_ids/UUIDs)
         if (category !== "All Categories") {
-            list = list.filter((v: any) => {
+            list = list.filter((v) => {
                 const vendorCategory = (v.category || v.businessType || "").toLowerCase();
                 return vendorCategory.includes(category.toLowerCase());
             });
@@ -62,15 +82,15 @@ export default function MarketplacePage() {
 
         switch (sortBy) {
             case "rating_desc":
-                return list.sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0));
+                return list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
             case "price_asc":
-                return list.sort((a: any, b: any) => (a.pricingMin || 0) - (b.pricingMin || 0));
+                return list.sort((a, b) => (a.pricingMin || 0) - (b.pricingMin || 0));
             case "price_desc":
-                return list.sort((a: any, b: any) => (b.pricingMin || 0) - (a.pricingMin || 0));
+                return list.sort((a, b) => (b.pricingMin || 0) - (a.pricingMin || 0));
             default:
                 return list;
         }
-    }, [rawVendors, sortBy, category]);
+    }, [response, sortBy, category]);
 
     const totalPages = Math.ceil(vendors.length / PAGE_SIZE);
     const paginatedVendors = vendors.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -197,13 +217,15 @@ export default function MarketplacePage() {
             ) : (
                 <>
                     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {paginatedVendors.map((vendor: any) => (
+                        {paginatedVendors.map((vendor: Vendor) => (
                             <div key={vendor.id} className="group relative bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
                                 <div className="aspect-[4/3] bg-gradient-to-br from-indigo-50 to-purple-50 overflow-hidden relative">
-                                    <img
+                                    <Image
                                         src={vendor.logoUrl || vendor.logo_url || "/placeholder-vendor.jpg"}
-                                        alt={vendor.business_name || vendor.name}
-                                        className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                                        alt={vendor.business_name || vendor.name || "Vendor"}
+                                        fill
+                                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                                        className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
                                         onError={(e) => {
                                             (e.target as HTMLImageElement).style.display = 'none';
                                         }}
@@ -252,12 +274,12 @@ export default function MarketplacePage() {
                                         </div>
                                     )}
                                     <div className="mt-auto pt-4 flex items-center gap-1.5 text-xs text-gray-500">
-                                        {(vendor.serviceAreas?.length > 0 || vendor.city || vendor.region) && (
+                                        {((vendor.serviceAreas?.length ?? 0) > 0 || vendor.city || vendor.region) && (
                                             <>
                                                 <MapPin className="h-3.5 w-3.5 shrink-0" />
                                                 <span className="truncate">
-                                                    {vendor.serviceAreas?.length > 0 
-                                                        ? vendor.serviceAreas.slice(0, 2).join(", ") 
+                                                    {(vendor.serviceAreas?.length ?? 0) > 0
+                                                        ? vendor.serviceAreas!.slice(0, 2).join(", ")
                                                         : [vendor.city, vendor.region].filter(Boolean).join(", ")}
                                                 </span>
                                             </>

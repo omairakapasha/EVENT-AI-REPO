@@ -16,7 +16,7 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
-import { loginViaUi, TEST_USER } from './helpers/auth';
+import { loginViaUi } from './helpers/auth';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

@@ -13,6 +13,11 @@ interface Notification {
     created_at: string;
 }
 
+interface NotificationsQueryData {
+    data?: Notification[];
+    [key: string]: unknown;
+}
+
 interface NotificationContextType {
     notifications: Notification[];
     unreadCount: number;
@@ -42,9 +47,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         onMutate: async (id) => {
             await queryClient.cancelQueries({ queryKey: ["notifications"] });
             const previous = queryClient.getQueryData(["notifications"]);
-            queryClient.setQueryData(["notifications"], (old: any) => ({
+            queryClient.setQueryData(["notifications"], (old: NotificationsQueryData | undefined) => ({
                 ...old,
-                data: (old?.data || []).map((n: Notification) =>
+                data: (old?.data || []).map((n) =>
                     n.id === id ? { ...n, is_read: true } : n
                 ),
             }));
@@ -61,9 +66,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         onMutate: async () => {
             await queryClient.cancelQueries({ queryKey: ["notifications"] });
             const previous = queryClient.getQueryData(["notifications"]);
-            queryClient.setQueryData(["notifications"], (old: any) => ({
+            queryClient.setQueryData(["notifications"], (old: NotificationsQueryData | undefined) => ({
                 ...old,
-                data: (old?.data || []).map((n: Notification) => ({ ...n, is_read: true })),
+                data: (old?.data || []).map((n) => ({ ...n, is_read: true })),
             }));
             return { previous };
         },
@@ -74,9 +79,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     });
 
     const removeNotification = (id: string) => {
-        queryClient.setQueryData(["notifications"], (old: any) => ({
+        queryClient.setQueryData(["notifications"], (old: NotificationsQueryData | undefined) => ({
             ...old,
-            data: (old?.data || []).filter((n: Notification) => n.id !== id),
+            data: (old?.data || []).filter((n) => n.id !== id),
         }));
     };
 
@@ -89,7 +94,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             // Token is in httpOnly cookie, sent automatically via EventSource
             eventSource = new EventSource(`${API_URL}/sse/stream`);
 
-            eventSource.addEventListener('notification', (e) => {
+            eventSource.addEventListener('notification', () => {
                 queryClient.invalidateQueries({ queryKey: ["notifications"] });
             });
 

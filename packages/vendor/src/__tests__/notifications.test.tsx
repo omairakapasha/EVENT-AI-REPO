@@ -18,7 +18,13 @@ jest.mock('@/lib/auth-store', () => ({
     isAuthenticated: true,
     vendor: { id: 'vendor-1', businessName: 'Elite Events', status: 'ACTIVE', categories: [] },
     user: { id: 'u1', email: 'v@test.com', firstName: 'Test', lastName: 'Vendor', role: 'vendor' },
+    vendorCheckStatus: 'done',
+    sessionStatus: 'done',
+    error: null,
     logout: jest.fn(),
+    initSession: jest.fn(),
+    ensureVendorProfile: jest.fn(),
+    clearError: jest.fn(),
   })),
 }))
 jest.mock('@/lib/hooks/use-sse', () => ({
@@ -49,29 +55,29 @@ function renderLayout() {
 }
 
 beforeEach(() => {
-  mockUseMarkNotificationRead.mockReturnValue({ mutate: jest.fn(), isPending: false } as ReturnType<typeof useMarkNotificationRead>)
-  mockUseMarkAllRead.mockReturnValue({ mutate: jest.fn(), isPending: false } as ReturnType<typeof useMarkAllRead>)
+  mockUseMarkNotificationRead.mockReturnValue({ mutate: jest.fn(), isPending: false } as unknown as ReturnType<typeof useMarkNotificationRead>)
+  mockUseMarkAllRead.mockReturnValue({ mutate: jest.fn(), isPending: false } as unknown as ReturnType<typeof useMarkAllRead>)
 })
 
 describe('Notifications', () => {
   it('renders unread count badge when count > 0', async () => {
-    mockUseUnreadCount.mockReturnValue({ data: 3 } as ReturnType<typeof useUnreadCount>)
-    mockUseNotifications.mockReturnValue({ data: mockNotifications } as ReturnType<typeof useNotifications>)
+    mockUseUnreadCount.mockReturnValue({ data: 3 } as unknown as ReturnType<typeof useUnreadCount>)
+    mockUseNotifications.mockReturnValue({ data: mockNotifications } as unknown as ReturnType<typeof useNotifications>)
     renderLayout()
     await waitFor(() => expect(screen.getByText('3')).toBeInTheDocument())
   })
 
   it('does not show badge when count is 0', async () => {
-    mockUseUnreadCount.mockReturnValue({ data: 0 } as ReturnType<typeof useUnreadCount>)
-    mockUseNotifications.mockReturnValue({ data: [] } as ReturnType<typeof useNotifications>)
+    mockUseUnreadCount.mockReturnValue({ data: 0 } as unknown as ReturnType<typeof useUnreadCount>)
+    mockUseNotifications.mockReturnValue({ data: [] } as unknown as ReturnType<typeof useNotifications>)
     renderLayout()
     await waitFor(() => expect(screen.getByLabelText('Notifications')).toBeInTheDocument())
     expect(screen.queryByText('0')).not.toBeInTheDocument()
   })
 
   it('opens notification dropdown when bell is clicked', async () => {
-    mockUseUnreadCount.mockReturnValue({ data: 2 } as ReturnType<typeof useUnreadCount>)
-    mockUseNotifications.mockReturnValue({ data: mockNotifications } as ReturnType<typeof useNotifications>)
+    mockUseUnreadCount.mockReturnValue({ data: 2 } as unknown as ReturnType<typeof useUnreadCount>)
+    mockUseNotifications.mockReturnValue({ data: mockNotifications } as unknown as ReturnType<typeof useNotifications>)
     renderLayout()
     await waitFor(() => expect(screen.getByLabelText('Notifications')).toBeInTheDocument())
     fireEvent.click(screen.getByLabelText('Notifications'))
@@ -79,8 +85,8 @@ describe('Notifications', () => {
   })
 
   it('shows Mark all as read button when there are unread notifications', async () => {
-    mockUseUnreadCount.mockReturnValue({ data: 1 } as ReturnType<typeof useUnreadCount>)
-    mockUseNotifications.mockReturnValue({ data: mockNotifications } as ReturnType<typeof useNotifications>)
+    mockUseUnreadCount.mockReturnValue({ data: 1 } as unknown as ReturnType<typeof useUnreadCount>)
+    mockUseNotifications.mockReturnValue({ data: mockNotifications } as unknown as ReturnType<typeof useNotifications>)
     renderLayout()
     await waitFor(() => expect(screen.getByLabelText('Notifications')).toBeInTheDocument())
     fireEvent.click(screen.getByLabelText('Notifications'))

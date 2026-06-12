@@ -1,8 +1,42 @@
 'use client';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Toaster } from 'react-hot-toast';
+import { TermsModal } from '@/components/terms-modal';
+import api, { acceptTerms } from '@/lib/api';
+
+function TermsGate({ children }: { children: React.ReactNode }) {
+    const queryClient = useQueryClient();
+
+    const { data: user } = useQuery({
+        queryKey: ['me-terms'],
+        queryFn: async () => {
+            try {
+                const res = await api.get('/users/me');
+                return res.data?.data ?? res.data ?? null;
+            } catch {
+                return null;
+            }
+        },
+        retry: false,
+        staleTime: Infinity,
+    });
+
+    const { mutate, isPending } = useMutation({
+        mutationFn: acceptTerms,
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['me-terms'] }),
+    });
+
+    const needsTerms = user && !user.terms_accepted_at;
+
+    return (
+        <>
+            {children}
+            {needsTerms && <TermsModal onAccept={() => mutate()} isAccepting={isPending} />}
+        </>
+    );
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
     const [queryClient] = useState(
@@ -20,7 +54,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     return (
         <QueryClientProvider client={queryClient}>
-            {children}
+            <TermsGate>{children}</TermsGate>
             <Toaster
                 position="top-right"
                 toastOptions={{

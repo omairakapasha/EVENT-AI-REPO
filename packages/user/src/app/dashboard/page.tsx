@@ -11,18 +11,39 @@ import {
     Plus,
     ArrowRight,
     Sparkles,
-    AlertCircle,
     Mail,
     Loader2,
-    CheckCircle,
+    MessageSquare,
 } from "lucide-react";
-import { getUserEvents, getUserBookings, api } from "@/lib/api";
+import { getUserEvents, getUserBookings, getSubscriptionStatus, api } from "@/lib/api";
 import toast from "react-hot-toast";
+import { UpgradeModal } from "@/components/upgrade-modal";
+
+interface DashboardBooking {
+    id: string;
+    status: string;
+    totalAmount?: number;
+    amount?: number;
+    vendorId?: string;
+    vendor?: { id?: string; name?: string };
+    service?: { name?: string };
+    eventDate: string;
+}
+
+interface DashboardEvent {
+    id: string;
+    eventName?: string;
+    eventType?: string;
+    eventDate: string;
+    location?: string;
+    status: string;
+}
 
 const quickActions = [
     { label: "Create Event", href: "/create-event", icon: Plus, color: "bg-blue-600" },
     { label: "Find Vendors", href: "/marketplace", icon: Sparkles, color: "bg-purple-600" },
     { label: "View Bookings", href: "/bookings", icon: Package, color: "bg-green-600" },
+    { label: "AI Planner", href: "/chat", icon: MessageSquare, color: "bg-indigo-600", alwaysEnabled: true },
 ];
 
 export default function DashboardPage() {
@@ -36,15 +57,21 @@ export default function DashboardPage() {
         queryFn: () => getUserBookings(),
     });
 
+    const { data: subscription } = useQuery({
+        queryKey: ["subscription"],
+        queryFn: getSubscriptionStatus,
+    });
+
     // Compute stats dynamically from API data
     const eventCount = events?.events?.length ?? 0;
+    const eventLimitReached = subscription !== undefined && !subscription.is_pro_active && eventCount >= 3;
     const bookingCount = bookings?.bookings?.length ?? 0;
     const totalSpent = bookings?.bookings?.reduce(
-        (sum: number, b: any) => sum + (b.totalAmount || b.amount || 0),
+        (sum: number, b: DashboardBooking) => sum + (b.totalAmount || b.amount || 0),
         0
     ) ?? 0;
     const vendorsContacted = bookings?.bookings
-        ? new Set(bookings.bookings.map((b: any) => b.vendorId || b.vendor?.id).filter(Boolean)).size
+        ? new Set(bookings.bookings.map((b: DashboardBooking) => b.vendorId || b.vendor?.id).filter(Boolean)).size
         : 0;
 
     const stats = [
@@ -53,6 +80,8 @@ export default function DashboardPage() {
         { label: "Total Spent", value: `PKR ${totalSpent.toLocaleString()}`, icon: DollarSign, color: "bg-yellow-100 text-yellow-600" },
         { label: "Vendors Contacted", value: String(vendorsContacted), icon: Users, color: "bg-purple-100 text-purple-600" },
     ];
+
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
     // Email verification state
     const [emailVerified, setEmailVerified] = useState(true);
@@ -83,6 +112,7 @@ export default function DashboardPage() {
     };
 
     return (
+        <>
         <div className="min-h-screen bg-gray-50">
             <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
                 {/* Email Verification Banner */}
@@ -113,35 +143,55 @@ export default function DashboardPage() {
                         <h1 className="text-3xl font-bold text-gray-900">My Dashboard</h1>
                         <p className="mt-1 text-gray-500">Manage your events, bookings, and vendor communications.</p>
                     </div>
-                    <Link
-                        href="/create-event"
-                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:from-indigo-700 hover:to-indigo-800 active:scale-[0.98] transition-all duration-150"
-                    >
-                        <Plus className="h-4 w-4" />
-                        New Event
-                    </Link>
+                    {eventLimitReached ? (
+                        <button
+                            onClick={() => setShowUpgradeModal(true)}
+                            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1A3D64] to-[#2a5a8f] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:from-[#122d4a] hover:to-[#1A3D64] transition-all duration-150 active:scale-[0.98]"
+                        >
+                            <Sparkles className="h-4 w-4" />
+                            Upgrade to Pro
+                        </button>
+                    ) : (
+                        <Link
+                            href="/create-event"
+                            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:from-indigo-700 hover:to-indigo-800 transition-all duration-150 active:scale-[0.98]"
+                        >
+                            <Plus className="h-4 w-4" />
+                            New Event
+                        </Link>
+                    )}
                 </div>
 
                 {/* Quick Actions */}
-                <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    {quickActions.map((action) => (
-                        <Link
-                            key={action.label}
-                            href={action.href}
-                            className={`group flex items-center gap-3 rounded-2xl ${action.color} px-6 py-5 text-white transition-all hover:opacity-90 hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98]`}
-                        >
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
-                                <action.icon className="h-5 w-5" />
-                            </div>
-                            <span className="font-semibold">{action.label}</span>
-                            <ArrowRight className="ml-auto h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-                        </Link>
-                    ))}
+                <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+                    {quickActions.map((action) => {
+                        const isCreateEvent = action.label === "Create Event";
+                        const locked = isCreateEvent && eventLimitReached;
+                        const sharedClass = `group flex items-center gap-3 rounded-2xl px-5 py-5 text-white transition-all hover:opacity-90 hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] ${locked ? "bg-[#1A3D64]" : action.color}`;
+                        const inner = (
+                            <>
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20">
+                                    {locked ? <Sparkles className="h-5 w-5" /> : <action.icon className="h-5 w-5" />}
+                                </div>
+                                <span className="font-semibold text-sm leading-tight">{locked ? "Upgrade to Pro" : action.label}</span>
+                                <ArrowRight className="ml-auto h-4 w-4 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                            </>
+                        );
+                        return locked ? (
+                            <button key={action.label} onClick={() => setShowUpgradeModal(true)} className={sharedClass}>
+                                {inner}
+                            </button>
+                        ) : (
+                            <Link key={action.label} href={action.href} className={sharedClass}>
+                                {inner}
+                            </Link>
+                        );
+                    })}
                 </div>
 
                 {/* Stats */}
                 <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {stats.map((stat, i) => (
+                    {stats.map((stat) => (
                         <div
                             key={stat.label}
                             className="rounded-2xl bg-white border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow duration-200"
@@ -157,6 +207,24 @@ export default function DashboardPage() {
                             </div>
                         </div>
                     ))}
+                </div>
+
+                {/* AI Planner Banner */}
+                <div className="mb-6 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/20">
+                        <MessageSquare className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="font-semibold text-white">Not sure where to start?</h3>
+                        <p className="text-indigo-200 text-sm mt-0.5">Tell our AI planner what you need — it&apos;ll suggest vendors, build timelines, and walk you through the whole process.</p>
+                    </div>
+                    <Link
+                        href="/chat"
+                        className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 active:scale-[0.98] transition-all"
+                    >
+                        Chat with AI
+                        <ArrowRight className="h-4 w-4" />
+                    </Link>
                 </div>
 
                 {/* Two-column layout */}
@@ -184,7 +252,7 @@ export default function DashboardPage() {
                                 </div>
                             ) : events?.events?.length ? (
                                 <div className="space-y-3">
-                                    {events.events.slice(0, 3).map((event: any) => (
+                                    {events.events.slice(0, 3).map((event: DashboardEvent) => (
                                         <div key={event.id} className="flex items-center justify-between rounded-xl border border-gray-100 p-4 hover:bg-gray-50 transition-colors">
                                             <div>
                                                 <h3 className="font-medium text-gray-900">{event.eventName || event.eventType}</h3>
@@ -241,7 +309,7 @@ export default function DashboardPage() {
                                 </div>
                             ) : bookings?.bookings?.length ? (
                                 <div className="space-y-3">
-                                    {bookings.bookings.slice(0, 3).map((booking: any) => (
+                                    {bookings.bookings.slice(0, 3).map((booking: DashboardBooking) => (
                                         <div key={booking.id} className="flex items-center justify-between rounded-xl border border-gray-100 p-4 hover:bg-gray-50 transition-colors">
                                             <div>
                                                 <h3 className="font-medium text-gray-900">{booking.service?.name || 'Service'}</h3>
@@ -277,5 +345,7 @@ export default function DashboardPage() {
                 </div>
             </div>
         </div>
+        {showUpgradeModal && <UpgradeModal onClose={() => setShowUpgradeModal(false)} />}
+        </>
     );
 }

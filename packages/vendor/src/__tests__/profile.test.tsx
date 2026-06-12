@@ -46,31 +46,31 @@ function renderPage() {
 }
 
 beforeEach(() => {
-  mockUseUpdateProfile.mockReturnValue({ mutateAsync: jest.fn(), isPending: false } as ReturnType<typeof useUpdateProfile>)
+  mockUseUpdateProfile.mockReturnValue({ mutateAsync: jest.fn(), isPending: false } as unknown as ReturnType<typeof useUpdateProfile>)
 })
 
 describe('Profile page', () => {
   it('renders form fields pre-populated with profile data', async () => {
-    mockUseVendorProfile.mockReturnValue({ data: mockVendor, isLoading: false } as ReturnType<typeof useVendorProfile>)
+    mockUseVendorProfile.mockReturnValue({ data: mockVendor, isLoading: false } as unknown as ReturnType<typeof useVendorProfile>)
     renderPage()
     await waitFor(() => expect(screen.getByDisplayValue('Elite Events Co.')).toBeInTheDocument())
     expect(screen.getByDisplayValue('contact@elite.pk')).toBeInTheDocument()
   })
 
   it('shows the ACTIVE status badge', async () => {
-    mockUseVendorProfile.mockReturnValue({ data: mockVendor, isLoading: false } as ReturnType<typeof useVendorProfile>)
+    mockUseVendorProfile.mockReturnValue({ data: mockVendor, isLoading: false } as unknown as ReturnType<typeof useVendorProfile>)
     renderPage()
     await waitFor(() => expect(screen.getByText('ACTIVE')).toBeInTheDocument())
   })
 
   it('shows Edit Profile button when not editing', async () => {
-    mockUseVendorProfile.mockReturnValue({ data: mockVendor, isLoading: false } as ReturnType<typeof useVendorProfile>)
+    mockUseVendorProfile.mockReturnValue({ data: mockVendor, isLoading: false } as unknown as ReturnType<typeof useVendorProfile>)
     renderPage()
     await waitFor(() => expect(screen.getByText('Edit Profile')).toBeInTheDocument())
   })
 
   it('shows Cancel and Save Changes buttons after clicking Edit Profile', async () => {
-    mockUseVendorProfile.mockReturnValue({ data: mockVendor, isLoading: false } as ReturnType<typeof useVendorProfile>)
+    mockUseVendorProfile.mockReturnValue({ data: mockVendor, isLoading: false } as unknown as ReturnType<typeof useVendorProfile>)
     renderPage()
     await waitFor(() => expect(screen.getByText('Edit Profile')).toBeInTheDocument())
     fireEvent.click(screen.getByText('Edit Profile'))
@@ -79,7 +79,7 @@ describe('Profile page', () => {
   })
 
   it('shows validation error for empty business name', async () => {
-    mockUseVendorProfile.mockReturnValue({ data: mockVendor, isLoading: false } as ReturnType<typeof useVendorProfile>)
+    mockUseVendorProfile.mockReturnValue({ data: mockVendor, isLoading: false } as unknown as ReturnType<typeof useVendorProfile>)
     renderPage()
     await waitFor(() => expect(screen.getByText('Edit Profile')).toBeInTheDocument())
     fireEvent.click(screen.getByText('Edit Profile'))
@@ -91,7 +91,7 @@ describe('Profile page', () => {
   })
 
   it('shows validation error for invalid website URL', async () => {
-    mockUseVendorProfile.mockReturnValue({ data: mockVendor, isLoading: false } as ReturnType<typeof useVendorProfile>)
+    mockUseVendorProfile.mockReturnValue({ data: mockVendor, isLoading: false } as unknown as ReturnType<typeof useVendorProfile>)
     renderPage()
     await waitFor(() => expect(screen.getByText('Edit Profile')).toBeInTheDocument())
     fireEvent.click(screen.getByText('Edit Profile'))

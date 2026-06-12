@@ -127,4 +127,19 @@ export const updateBookingStatus = async (id: string, status: "confirmed" | "rej
     return response.data;
 };
 
+export const acceptTerms = async () => {
+    const response = await api.post("/users/accept-terms");
+    return response.data;
+};
+
+export const grantPro = async (userId: string, days = 36500) => {
+    const response = await api.post(`/admin/subscriptions/${userId}/grant`, null, { params: { days } });
+    return response.data;
+};
+
+export const revokePro = async (userId: string) => {
+    const response = await api.delete(`/admin/subscriptions/${userId}/revoke`);
+    return response.data;
+};
+
 export default api;

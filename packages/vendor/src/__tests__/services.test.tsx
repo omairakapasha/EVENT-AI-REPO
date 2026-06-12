@@ -43,19 +43,19 @@ function renderPage() {
 }
 
 beforeEach(() => {
-  mockUseDeleteService.mockReturnValue({ mutateAsync: jest.fn(), isPending: false } as ReturnType<typeof useDeleteService>)
+  mockUseDeleteService.mockReturnValue({ mutateAsync: jest.fn(), isPending: false } as unknown as ReturnType<typeof useDeleteService>)
 })
 
 describe('Services page', () => {
   it('renders services table with service names', async () => {
-    mockUseVendorServices.mockReturnValue({ data: { data: mockServices, meta: { total: 2, pages: 1 } }, isLoading: false, isError: false } as ReturnType<typeof useVendorServices>)
+    mockUseVendorServices.mockReturnValue({ data: { data: mockServices, meta: { total: 2, pages: 1 } }, isLoading: false, isError: false } as unknown as ReturnType<typeof useVendorServices>)
     renderPage()
     await waitFor(() => expect(screen.getByText('Photography Package')).toBeInTheDocument())
     expect(screen.getByText('Catering Service')).toBeInTheDocument()
   })
 
   it('renders table column headers', async () => {
-    mockUseVendorServices.mockReturnValue({ data: { data: mockServices, meta: { total: 2, pages: 1 } }, isLoading: false, isError: false } as ReturnType<typeof useVendorServices>)
+    mockUseVendorServices.mockReturnValue({ data: { data: mockServices, meta: { total: 2, pages: 1 } }, isLoading: false, isError: false } as unknown as ReturnType<typeof useVendorServices>)
     renderPage()
     await waitFor(() => expect(screen.getByText('Name')).toBeInTheDocument())
     expect(screen.getByText('Status')).toBeInTheDocument()
@@ -63,13 +63,13 @@ describe('Services page', () => {
   })
 
   it('shows Add Service button', async () => {
-    mockUseVendorServices.mockReturnValue({ data: { data: mockServices, meta: { total: 2, pages: 1 } }, isLoading: false, isError: false } as ReturnType<typeof useVendorServices>)
+    mockUseVendorServices.mockReturnValue({ data: { data: mockServices, meta: { total: 2, pages: 1 } }, isLoading: false, isError: false } as unknown as ReturnType<typeof useVendorServices>)
     renderPage()
     await waitFor(() => expect(screen.getByText('Add Service')).toBeInTheDocument())
   })
 
   it('shows empty state when no services', async () => {
-    mockUseVendorServices.mockReturnValue({ data: { data: [], meta: { total: 0, pages: 0 } }, isLoading: false, isError: false } as ReturnType<typeof useVendorServices>)
+    mockUseVendorServices.mockReturnValue({ data: { data: [], meta: { total: 0, pages: 0 } }, isLoading: false, isError: false } as unknown as ReturnType<typeof useVendorServices>)
     renderPage()
     await waitFor(() => expect(screen.getByText('No services yet')).toBeInTheDocument())
   })

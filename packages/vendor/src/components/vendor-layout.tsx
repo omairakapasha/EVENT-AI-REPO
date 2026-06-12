@@ -16,6 +16,7 @@ import {
     WifiOff,
     AlertCircle,
     RefreshCw,
+    MessageSquare,
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { useAuthStore } from '@/lib/auth-store';
@@ -28,6 +29,7 @@ const navItems = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { href: '/services', icon: Briefcase, label: 'Services' },
     { href: '/bookings', icon: Package, label: 'Bookings' },
+    { href: '/inquiries', icon: MessageSquare, label: 'Inquiries' },
     { href: '/availability', icon: Calendar, label: 'Availability' },
     { href: '/profile', icon: Settings, label: 'Profile' },
 ];

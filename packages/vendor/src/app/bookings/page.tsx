@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Loader2 } from 'lucide-react';
+import { Calendar, Loader2, FileText } from 'lucide-react';
 import { VendorLayout } from '@/components/vendor-layout';
 import { useVendorBookings, useConfirmBooking, useRejectBooking, type Booking } from '@/lib/hooks/use-vendor-bookings';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
@@ -141,11 +141,18 @@ export default function BookingsPage() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right text-sm font-medium text-surface-900 dark:text-surface-50">
-                                            {formatCurrency(b.total_price, b.currency)}
+                                            {formatCurrency(b.total_price)}
                                         </td>
                                         <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                                             {b.status === 'pending' && (
                                                 <div className="flex justify-end gap-2">
+                                                    <button
+                                                        onClick={() => router.push(`/bookings/${b.id}`)}
+                                                        className="flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                                                    >
+                                                        <FileText className="h-3 w-3" />
+                                                        Quote
+                                                    </button>
                                                     <button
                                                         onClick={() => confirm.mutate(b.id)}
                                                         disabled={confirm.isPending}

@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { Building2, ArrowRight, CheckCircle, Zap, Shield, BarChart3 } from 'lucide-react';
+import Image from 'next/image';
+import { ArrowRight, CheckCircle, Zap, Shield, BarChart3 } from 'lucide-react';
 
 const features = [
     {
@@ -35,8 +36,8 @@ export default function HomePage() {
             <nav className="border-b border-surface-200 bg-white/80 backdrop-blur-lg dark:border-surface-800 dark:bg-surface-900/80">
                 <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary-500 to-primary-600">
-                            <Building2 className="h-5 w-5 text-white" />
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden">
+                            <Image src="/logo.png" alt="Event-AI" width={36} height={36} className="object-contain" />
                         </div>
                         <span className="text-lg font-semibold text-surface-900 dark:text-surface-50">
                             Vendor Portal
@@ -178,8 +179,8 @@ export default function HomePage() {
                 <div className="mx-auto max-w-7xl px-6">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary-500 to-primary-600">
-                                <Building2 className="h-4 w-4 text-white" />
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden">
+                                <Image src="/logo.png" alt="Event-AI" width={32} height={32} className="object-contain" />
                             </div>
                             <span className="font-semibold text-surface-900 dark:text-surface-50">
                                 Vendor Portal

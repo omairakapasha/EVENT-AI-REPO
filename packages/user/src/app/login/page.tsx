@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff, Loader2, AlertCircle, CheckCircle, Clock, Sparkles, Star, Shield, Users } from "lucide-react";
+import { Eye, EyeOff, Loader2, AlertCircle, CheckCircle, Clock, Sparkles } from "lucide-react";
 import Image from "next/image";
 
 // ─── Google SVG ───────────────────────────────────────────────────────────────
@@ -68,8 +68,8 @@ function LoginForm() {
             // httpOnly cookies are set by the backend on login
             const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
             router.push(callbackUrl);
-        } catch (err: any) {
-            setError(err.message || "Invalid email or password");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Invalid email or password");
             setLoading(false);
         }
     };
@@ -111,30 +111,12 @@ function LoginForm() {
 
                 {/* Main copy */}
                 <div className="relative">
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-[#EFECE3]/80 mb-6">
-                        <Star className="h-3 w-3 fill-amber-300 text-amber-300" />
-                        Trusted by 10,000+ event planners in Pakistan
-                    </div>
                     <h2 className="text-4xl font-bold leading-tight mb-4">
                         Plan unforgettable events with AI
                     </h2>
                     <p className="text-[#EFECE3]/70 text-lg leading-relaxed">
                         Discover top vendors, get smart recommendations, and manage everything from weddings to corporate events — all in one place.
                     </p>
-
-                    {/* Stats */}
-                    <div className="mt-8 grid grid-cols-3 gap-4">
-                        {[
-                            { value: "10K+", label: "Events Planned" },
-                            { value: "500+", label: "Verified Vendors" },
-                            { value: "4.9★", label: "Average Rating" },
-                        ].map((stat) => (
-                            <div key={stat.label} className="rounded-2xl bg-white/10 backdrop-blur-sm p-4 text-center">
-                                <p className="text-2xl font-bold text-white">{stat.value}</p>
-                                <p className="text-xs text-[#96A78D] mt-1">{stat.label}</p>
-                            </div>
-                        ))}
-                    </div>
                 </div>
 
                 {/* Testimonial */}
@@ -285,22 +267,6 @@ function LoginForm() {
                                 Create one free
                             </Link>
                         </p>
-                    </div>
-
-                    {/* Trust badges */}
-                    <div className="mt-6 flex items-center justify-center gap-6 text-xs text-gray-400">
-                        <div className="flex items-center gap-1.5">
-                            <Shield className="h-3.5 w-3.5 text-green-500" />
-                            <span>SSL Secured</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <Users className="h-3.5 w-3.5 text-[#1A3D64]" />
-                            <span>10K+ Users</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
-                            <span>4.9 Rating</span>
-                        </div>
                     </div>
                 </div>
             </div>

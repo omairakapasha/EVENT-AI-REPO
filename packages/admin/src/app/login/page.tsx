@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Zap, Mail, Lock, Loader2, AlertCircle, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Mail, Lock, Loader2, AlertCircle, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import Image from "next/image";
 import api, { getApiError } from "@/lib/api";
 
@@ -78,12 +78,9 @@ export default function LoginPage() {
                                 <div className="relative mb-5">
                                     <div className="absolute inset-0 rounded-2xl blur-xl opacity-60"
                                         style={{ background: "linear-gradient(135deg, #1A3D64, #96A78D)" }} />
-                                    <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl"
-                                        style={{
-                                            background: "linear-gradient(135deg, #1A3D64, #2a5a8f)",
-                                            boxShadow: "0 8px 32px rgba(26,61,100,0.5)"
-                                        }}>
-                                        <Zap className="h-8 w-8 text-white" />
+                                    <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl overflow-hidden"
+                                        style={{ boxShadow: "0 8px 32px rgba(26,61,100,0.5)" }}>
+                                        <Image src="/logo.png" alt="Event-AI" width={64} height={64} className="object-contain" />
                                     </div>
                                 </div>
                                 <h1 className="text-2xl font-bold text-white tracking-tight">Event-AI Admin</h1>
@@ -198,24 +195,6 @@ export default function LoginPage() {
                                     )}
                                 </button>
                             </form>
-
-                            {/* Stats */}
-                            <div className="mt-7 grid grid-cols-3 gap-2.5">
-                                {[
-                                    { value: "500+", label: "Vendors" },
-                                    { value: "10K+", label: "Events" },
-                                    { value: "99.9%", label: "Uptime" },
-                                ].map((s) => (
-                                    <div key={s.label} className="rounded-xl py-3 text-center"
-                                        style={{
-                                            background: "rgba(150,167,141,0.06)",
-                                            border: "1px solid rgba(150,167,141,0.15)"
-                                        }}>
-                                        <p className="text-sm font-bold text-white">{s.value}</p>
-                                        <p className="text-[10px] mt-0.5" style={{ color: "rgba(150,167,141,0.6)" }}>{s.label}</p>
-                                    </div>
-                                ))}
-                            </div>
 
                             <p className="mt-5 text-center text-[11px]" style={{ color: "rgba(255,255,255,0.15)" }}>
                                 Protected · Unauthorized access is prohibited

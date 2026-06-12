@@ -130,7 +130,7 @@ function DashboardContent() {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right text-sm font-medium text-surface-900 dark:text-surface-50">
-                                        {formatCurrency(b.total_price, b.currency)}
+                                        {formatCurrency(b.total_price)}
                                     </td>
                                 </tr>
                             ))}

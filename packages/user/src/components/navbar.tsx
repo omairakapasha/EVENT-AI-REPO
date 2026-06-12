@@ -22,6 +22,7 @@ export function Navbar() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [userName, setUserName] = useState<string | null>(null);
+    const [isPro, setIsPro] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -35,6 +36,7 @@ export function Navbar() {
                 const user = data.data || data;
                 if (user) {
                     setUserName(`${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email || "User");
+                    setIsPro(user.subscription_status === "pro");
                 }
             })
             .catch(() => setUserName(null));
@@ -126,11 +128,19 @@ export function Navbar() {
                             <div className="relative" ref={userMenuRef}>
                                 <button onClick={() => setUserMenuOpen(!userMenuOpen)}
                                     className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-sm font-medium transition-all duration-150 hover:bg-[#EFECE3]">
-                                    <div className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
+                                    <div className="relative flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
                                         style={{ background: "linear-gradient(135deg,#1A3D64,#2a5a8f)" }}>
                                         {userName ? userName.charAt(0).toUpperCase() : "U"}
+                                        {isPro && (
+                                            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[7px] font-bold text-white leading-none"
+                                                style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)" }}>
+                                                P
+                                            </span>
+                                        )}
                                     </div>
                                     <span className="hidden md:inline text-sm font-medium text-slate-700">{userName || "Account"}</span>
+                                    {isPro && <span className="hidden md:inline px-1.5 py-0.5 rounded-md text-[9px] font-bold text-white leading-none"
+                                        style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)" }}>PRO</span>}
                                     <ChevronDown className="h-3 w-3 text-slate-400" />
                                 </button>
                                 {userMenuOpen && (
@@ -138,7 +148,15 @@ export function Navbar() {
                                         style={{ background: "white", border: "1px solid rgba(226,232,240,0.8)", boxShadow: "0 20px 40px rgba(0,0,0,0.12)" }}>
                                         <div className="px-4 py-3 border-b border-gray-100">
                                             <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Signed in as</p>
-                                            <p className="text-sm font-semibold text-gray-900 truncate mt-0.5">{userName || "User"}</p>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <p className="text-sm font-semibold text-gray-900 truncate">{userName || "User"}</p>
+                                                {isPro && (
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold text-white leading-none"
+                                                        style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)" }}>
+                                                        PRO
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                         <button onClick={handleLogout}
                                             className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors">

@@ -1,23 +1,42 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { 
-    Send, 
-    Bot, 
-    User, 
-    Loader2, 
-    Sparkles, 
-    Trash2, 
-    ThumbsUp, 
+import {
+    Send,
+    Bot,
+    User,
+    Loader2,
+    Sparkles,
+    Trash2,
+    ThumbsUp,
     ThumbsDown,
     AlertCircle,
     Info,
     Calendar,
     MapPin,
-    Search
+    Search,
+    Star,
+    ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { api } from '@/lib/api';
+
+interface VendorService {
+    id: string;
+    name: string;
+    price_min?: number;
+    price_max?: number;
+}
+
+interface VendorSuggestion {
+    id: string;
+    business_name: string;
+    city?: string;
+    rating?: number;
+    total_reviews?: number;
+    price_min?: number;
+    price_max?: number;
+    services?: VendorService[];
+}
 
 interface Message {
     id: string;
@@ -27,6 +46,7 @@ interface Message {
     timestamp: Date;
     is_streaming?: boolean;
     feedback?: 'up' | 'down' | null;
+    vendors?: VendorSuggestion[];
 }
 
 const AGENT_COLORS: Record<string, string> = {
@@ -55,8 +75,8 @@ export default function ChatPage() {
         
         if (savedMessages) {
             try {
-                const parsed = JSON.parse(savedMessages);
-                setMessages(parsed.map((m: any) => ({
+                const parsed = JSON.parse(savedMessages) as Array<Omit<Message, 'timestamp'> & { timestamp: string }>;
+                setMessages(parsed.map((m) => ({
                     ...m,
                     timestamp: new Date(m.timestamp)
                 })));
@@ -200,6 +220,14 @@ export default function ChatPage() {
                             setActiveAgent(data.agent);
                         }
 
+                        if (data.vendors && Array.isArray(data.vendors) && data.vendors.length > 0) {
+                            setMessages(prev => prev.map(m =>
+                                m.id === assistantMessageId
+                                    ? { ...m, vendors: data.vendors as VendorSuggestion[] }
+                                    : m
+                            ));
+                        }
+
                         if (data.done) {
                             if (data.session_id && !sessionId) {
                                 setSessionId(data.session_id);
@@ -224,9 +252,9 @@ export default function ChatPage() {
                     : m
             ));
 
-        } catch (err: any) {
+        } catch (err) {
             console.error("Chat error:", err);
-            setError(err.message || 'Failed to get a response from the AI assistant.');
+            setError(err instanceof Error ? err.message : 'Failed to get a response from the AI assistant.');
             setMessages(prev => prev.filter(m => m.id !== assistantMessageId));
         } finally {
             setIsStreaming(false);
@@ -321,8 +349,8 @@ export default function ChatPage() {
                                     <div className="space-y-2">
                                         <div className={cn(
                                             "relative px-5 py-4 rounded-2xl text-sm leading-relaxed shadow-sm",
-                                            m.role === 'user' 
-                                                ? "bg-indigo-600 text-white rounded-tr-sm" 
+                                            m.role === 'user'
+                                                ? "bg-indigo-600 text-white rounded-tr-sm"
                                                 : "bg-white text-gray-900 border border-gray-100 rounded-tl-sm"
                                         )}>
                                             {m.content || (
@@ -332,40 +360,101 @@ export default function ChatPage() {
                                                     <span className="h-1.5 w-1.5 bg-indigo-400 rounded-full animate-bounce"></span>
                                                 </div>
                                             )}
-                                            
-                                            {m.role === 'assistant' && !m.is_streaming && (
-                                                <div className="absolute -bottom-10 left-0 flex items-center gap-3">
-                                                    <div className="flex items-center gap-1">
-                                                        <button 
-                                                            onClick={() => handleFeedback(m.id, 'up')}
-                                                            className={cn(
-                                                                "p-1.5 rounded-lg transition-colors",
-                                                                m.feedback === 'up' ? "bg-green-100 text-green-600" : "text-gray-400 hover:text-green-600 hover:bg-green-50"
-                                                            )}
-                                                        >
-                                                            <ThumbsUp className="h-3.5 w-3.5" />
-                                                        </button>
-                                                        <button 
-                                                            onClick={() => handleFeedback(m.id, 'down')}
-                                                            className={cn(
-                                                                "p-1.5 rounded-lg transition-colors",
-                                                                m.feedback === 'down' ? "bg-red-100 text-red-600" : "text-gray-400 hover:text-red-600 hover:bg-red-50"
-                                                            )}
-                                                        >
-                                                            <ThumbsDown className="h-3.5 w-3.5" />
-                                                        </button>
-                                                    </div>
-                                                    {m.agent_name && (
-                                                        <div className={cn(
-                                                            "px-2 py-0.5 border text-[10px] font-bold rounded-md uppercase tracking-wider",
-                                                            AGENT_COLORS[m.agent_name] || "bg-gray-100 text-gray-600 border-gray-200"
-                                                        )}>
-                                                            {m.agent_name.replace('Agent', '')}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
                                         </div>
+
+                                        {/* Feedback + agent badge */}
+                                        {m.role === 'assistant' && !m.is_streaming && (
+                                            <div className="flex items-center gap-3 pl-1">
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        onClick={() => handleFeedback(m.id, 'up')}
+                                                        className={cn(
+                                                            "p-1.5 rounded-lg transition-colors",
+                                                            m.feedback === 'up' ? "bg-green-100 text-green-600" : "text-gray-400 hover:text-green-600 hover:bg-green-50"
+                                                        )}
+                                                    >
+                                                        <ThumbsUp className="h-3.5 w-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleFeedback(m.id, 'down')}
+                                                        className={cn(
+                                                            "p-1.5 rounded-lg transition-colors",
+                                                            m.feedback === 'down' ? "bg-red-100 text-red-600" : "text-gray-400 hover:text-red-600 hover:bg-red-50"
+                                                        )}
+                                                    >
+                                                        <ThumbsDown className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                                {m.agent_name && (
+                                                    <div className={cn(
+                                                        "px-2 py-0.5 border text-[10px] font-bold rounded-md uppercase tracking-wider",
+                                                        AGENT_COLORS[m.agent_name] || "bg-gray-100 text-gray-600 border-gray-200"
+                                                    )}>
+                                                        {m.agent_name.replace('Agent', '')}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Vendor booking cards */}
+                                        {m.role === 'assistant' && !m.is_streaming && m.vendors && m.vendors.length > 0 && (
+                                            <div className="mt-1">
+                                                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2 pl-1">
+                                                    {m.vendors.length} vendor{m.vendors.length > 1 ? 's' : ''} found — tap to book
+                                                </p>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-xl">
+                                                    {m.vendors.slice(0, 6).map((v) => {
+                                                        const firstService = v.services?.find(s => s.id);
+                                                        const bookUrl = firstService
+                                                            ? `/marketplace/${v.id}/book?serviceId=${firstService.id}&serviceName=${encodeURIComponent(firstService.name)}`
+                                                            : `/marketplace/${v.id}`;
+                                                        return (
+                                                            <div
+                                                                key={v.id}
+                                                                className="bg-white border border-gray-200 rounded-xl p-3.5 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all"
+                                                            >
+                                                                <div className="flex items-start justify-between gap-2 mb-1.5">
+                                                                    <h4 className="font-semibold text-sm text-gray-900 leading-tight truncate">{v.business_name}</h4>
+                                                                    {v.rating != null && v.rating > 0 && (
+                                                                        <div className="flex items-center gap-0.5 shrink-0">
+                                                                            <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
+                                                                            <span className="text-xs font-medium text-gray-700">{v.rating.toFixed(1)}</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                {v.city && (
+                                                                    <div className="flex items-center gap-1 mb-1.5">
+                                                                        <MapPin className="h-3 w-3 text-gray-400 shrink-0" />
+                                                                        <span className="text-xs text-gray-500 truncate">{v.city}</span>
+                                                                    </div>
+                                                                )}
+                                                                {(v.price_min != null || v.price_max != null) && (
+                                                                    <p className="text-xs text-indigo-600 font-medium mb-2.5">
+                                                                        PKR {v.price_min != null ? v.price_min.toLocaleString() : '?'}
+                                                                        {v.price_max != null && ` – ${v.price_max.toLocaleString()}`}
+                                                                    </p>
+                                                                )}
+                                                                <div className="flex gap-1.5">
+                                                                    <a
+                                                                        href={bookUrl}
+                                                                        className="flex-1 text-center py-1.5 px-2 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+                                                                    >
+                                                                        Book Now
+                                                                    </a>
+                                                                    <a
+                                                                        href={`/marketplace/${v.id}`}
+                                                                        className="p-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                                                                        title="View profile"
+                                                                    >
+                                                                        <ExternalLink className="h-3.5 w-3.5" />
+                                                                    </a>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

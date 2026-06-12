@@ -47,18 +47,18 @@ function renderPage() {
 }
 
 beforeEach(() => {
-  mockUseUpsertAvailability.mockReturnValue({ mutateAsync: jest.fn(), isPending: false } as ReturnType<typeof useUpsertAvailability>)
+  mockUseUpsertAvailability.mockReturnValue({ mutateAsync: jest.fn(), isPending: false } as unknown as ReturnType<typeof useUpsertAvailability>)
 })
 
 describe('Availability page', () => {
   it('renders the Availability heading', async () => {
-    mockUseVendorAvailability.mockReturnValue({ data: mockAvailability, isLoading: false } as ReturnType<typeof useVendorAvailability>)
+    mockUseVendorAvailability.mockReturnValue({ data: mockAvailability, isLoading: false } as unknown as ReturnType<typeof useVendorAvailability>)
     renderPage()
     await waitFor(() => expect(screen.getByText('Availability')).toBeInTheDocument())
   })
 
   it('renders the calendar grid with day headers', async () => {
-    mockUseVendorAvailability.mockReturnValue({ data: mockAvailability, isLoading: false } as ReturnType<typeof useVendorAvailability>)
+    mockUseVendorAvailability.mockReturnValue({ data: mockAvailability, isLoading: false } as unknown as ReturnType<typeof useVendorAvailability>)
     renderPage()
     await waitFor(() => expect(screen.getByText('Sun')).toBeInTheDocument())
     expect(screen.getByText('Mon')).toBeInTheDocument()
@@ -66,7 +66,7 @@ describe('Availability page', () => {
   })
 
   it('renders the status legend', async () => {
-    mockUseVendorAvailability.mockReturnValue({ data: mockAvailability, isLoading: false } as ReturnType<typeof useVendorAvailability>)
+    mockUseVendorAvailability.mockReturnValue({ data: mockAvailability, isLoading: false } as unknown as ReturnType<typeof useVendorAvailability>)
     renderPage()
     await waitFor(() => expect(screen.getByText('Available')).toBeInTheDocument())
     expect(screen.getByText('Blocked')).toBeInTheDocument()
@@ -74,7 +74,7 @@ describe('Availability page', () => {
   })
 
   it('renders month navigation', async () => {
-    mockUseVendorAvailability.mockReturnValue({ data: [], isLoading: false } as ReturnType<typeof useVendorAvailability>)
+    mockUseVendorAvailability.mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useVendorAvailability>)
     renderPage()
     const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December']
     const currentMonth = monthNames[today.getMonth()]

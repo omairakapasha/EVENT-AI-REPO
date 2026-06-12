@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
     Eye, EyeOff, Loader2, AlertCircle, CheckCircle,
-    Calendar, Sparkles, ArrowRight, Shield, Users, Star,
+    Calendar, Sparkles, ArrowRight, Shield, Users,
 } from "lucide-react";
 
 // ─── Google SVG ───────────────────────────────────────────────────────────────
@@ -94,8 +95,8 @@ export default function SignupPage() {
 
             setSuccess(true);
             setTimeout(() => router.push("/login?registered=true"), 3000);
-        } catch (err: any) {
-            setError(err.message || "An error occurred during registration");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "An error occurred during registration");
         } finally {
             setIsLoading(false);
         }
@@ -136,8 +137,8 @@ export default function SignupPage() {
 
                 {/* Logo */}
                 <div className="relative flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm shadow-lg">
-                        <Calendar className="h-6 w-6 text-white" />
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm shadow-lg overflow-hidden">
+                        <Image src="/logo.png" alt="Event-AI" width={44} height={44} className="object-contain" />
                     </div>
                     <div>
                         <span className="text-xl font-bold">Event-AI</span>
@@ -174,25 +175,6 @@ export default function SignupPage() {
                         ))}
                     </div>
                 </div>
-
-                {/* Social proof */}
-                <div className="relative flex items-center gap-4">
-                    <div className="flex -space-x-2">
-                        {["A", "B", "C", "D"].map((l) => (
-                            <div key={l} className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 border-2 border-white flex items-center justify-center text-xs font-bold text-white">
-                                {l}
-                            </div>
-                        ))}
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-1">
-                            {[1, 2, 3, 4, 5].map((i) => (
-                                <Star key={i} className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
-                            ))}
-                        </div>
-                        <p className="text-xs text-indigo-200 mt-0.5">10,000+ happy event planners</p>
-                    </div>
-                </div>
             </div>
 
             {/* ── Right: Signup Form ── */}
@@ -200,8 +182,8 @@ export default function SignupPage() {
                 <div className="w-full max-w-md">
                     {/* Mobile logo */}
                     <div className="flex items-center justify-center gap-2 mb-8 lg:hidden">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600">
-                            <Calendar className="h-5 w-5 text-white" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden">
+                            <Image src="/logo.png" alt="Event-AI" width={40} height={40} className="object-contain" />
                         </div>
                         <span className="text-xl font-bold text-gray-900">Event-AI</span>
                     </div>

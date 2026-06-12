@@ -78,6 +78,33 @@ export interface ApiError {
     details?: Array<{ field: string; message: string }>;
 }
 
+// ── Inquiries ─────────────────────────────────────────────────────────────────
+
+export interface Inquiry {
+    id: string;
+    vendor_id: string;
+    customer_name: string;
+    customer_email: string;
+    customer_phone: string | null;
+    message: string;
+    preferred_date: string | null;
+    event_type: string | null;
+    expected_guests: number | null;
+    budget_range: string | null;
+    status: 'NEW' | 'CONTACTED' | 'QUOTED' | 'CONVERTED' | 'DECLINED';
+    vendor_response: string | null;
+    vendor_responded_at: string | null;
+    quote_id: string | null;
+    quoted_amount: number | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export const getInquiries = async (params?: { status?: string; limit?: number; offset?: number }): Promise<Inquiry[]> => {
+    const res = await api.get('/inquiries/vendor/my-inquiries', { params });
+    return res.data?.data ?? res.data ?? [];
+};
+
 export const getApiError = (error: unknown): string => {
     if (axios.isAxiosError(error)) {
         const data = error.response?.data;
@@ -90,6 +117,12 @@ export const getApiError = (error: unknown): string => {
     }
     if (error instanceof Error) return error.message;
     return 'An unexpected error occurred';
+};
+
+// Terms & Conditions
+export const acceptTerms = async () => {
+    const response = await api.post('/users/accept-terms');
+    return response.data;
 };
 
 export default api;

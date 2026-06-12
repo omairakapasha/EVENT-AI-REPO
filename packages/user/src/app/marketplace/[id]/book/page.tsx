@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, Calendar, Users, FileText, Loader2, CheckCircle } from 'lucide-react';
 import { createBooking } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { isAxiosError } from 'axios';
 
 function BookingContent() {
     const params = useParams();
@@ -55,8 +56,9 @@ function BookingContent() {
             setSuccess(true);
             toast.success('Booking request sent!');
             setTimeout(() => router.push('/bookings'), 2000);
-        } catch (err: any) {
-            const msg = err.response?.data?.message || err.response?.data?.error || 'Failed to create booking';
+        } catch (err) {
+            const data = isAxiosError(err) ? err.response?.data : undefined;
+            const msg = data?.message || data?.error || 'Failed to create booking';
             setError(msg);
             toast.error(msg);
         } finally {
@@ -94,7 +96,7 @@ function BookingContent() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
                 <h1 className="text-xl font-bold text-gray-900 mb-1">Book a Service</h1>
                 <p className="text-sm text-gray-500 mb-6">
-                    You're booking: <span className="font-medium text-gray-700">{decodeURIComponent(serviceName)}</span>
+                    You&apos;re booking: <span className="font-medium text-gray-700">{decodeURIComponent(serviceName)}</span>
                 </p>
 
                 {error && (

@@ -2,26 +2,30 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Mail, Phone, Lock, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { User, Mail, Phone, Lock, Loader2, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { isAxiosError } from 'axios';
+import { UpgradeModal } from '@/components/upgrade-modal';
 
 interface UserData {
     firstName: string;
     lastName: string;
     email: string;
     phone: string;
+    subscriptionStatus: string;
 }
 
 export default function ProfilePage() {
     const router = useRouter();
-    const [user, setUser] = useState<UserData>({ firstName: '', lastName: '', email: '', phone: '' });
+    const [user, setUser] = useState<UserData>({ firstName: '', lastName: '', email: '', phone: '', subscriptionStatus: 'free' });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [editing, setEditing] = useState(false);
     const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
     const [changingPassword, setChangingPassword] = useState(false);
     const [showPasswordSection, setShowPasswordSection] = useState(false);
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
     useEffect(() => {
         // Fetch user data from API (httpOnly cookies handle auth)
@@ -34,6 +38,7 @@ export default function ProfilePage() {
                         lastName: data.last_name || data.lastName || '',
                         email: data.email || '',
                         phone: data.phone || '',
+                        subscriptionStatus: data.subscription_status || 'free',
                     });
                 }
             })
@@ -58,8 +63,9 @@ export default function ProfilePage() {
             });
             toast.success('Profile updated!');
             setEditing(false);
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || 'Failed to update profile');
+        } catch (err) {
+            const data = isAxiosError(err) ? err.response?.data : undefined;
+            toast.error(data?.message || 'Failed to update profile');
         } finally {
             setSaving(false);
         }
@@ -88,8 +94,9 @@ export default function ProfilePage() {
             toast.success('Password changed successfully!');
             setShowPasswordSection(false);
             setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || 'Failed to change password');
+        } catch (err) {
+            const data = isAxiosError(err) ? err.response?.data : undefined;
+            toast.error(data?.message || 'Failed to change password');
         } finally {
             setChangingPassword(false);
         }
@@ -104,6 +111,7 @@ export default function ProfilePage() {
     }
 
     return (
+        <>
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -114,9 +122,17 @@ export default function ProfilePage() {
                                 <User className="h-8 w-8 text-blue-600" />
                             </div>
                             <div>
-                                <h1 className="text-2xl font-bold text-white">
-                                    {user.firstName} {user.lastName}
-                                </h1>
+                                <div className="flex items-center gap-3">
+                                    <h1 className="text-2xl font-bold text-white">
+                                        {user.firstName} {user.lastName}
+                                    </h1>
+                                    {user.subscriptionStatus === 'pro' && (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold text-white"
+                                            style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)' }}>
+                                            PRO
+                                        </span>
+                                    )}
+                                </div>
                                 <p className="text-blue-100">{user.email}</p>
                             </div>
                         </div>
@@ -212,6 +228,37 @@ export default function ProfilePage() {
                             </div>
                         )}
 
+                        {/* Subscription Section */}
+                        <div className="border-t pt-6">
+                            <h2 className="text-lg font-semibold text-gray-900 mb-3">Subscription</h2>
+                            {user.subscriptionStatus === 'pro' ? (
+                                <div className="flex items-center gap-3 p-4 rounded-xl"
+                                    style={{ background: 'linear-gradient(135deg,#fef3c7,#fde68a)', border: '1px solid #f59e0b' }}>
+                                    <span className="px-2 py-0.5 rounded-md text-xs font-bold text-white"
+                                        style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)' }}>PRO</span>
+                                    <div>
+                                        <p className="text-sm font-semibold text-amber-900">Pro Plan Active</p>
+                                        <p className="text-xs text-amber-700">Instant payment confirmation on all bookings. No deposit required.</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200">
+                                    <span className="px-2 py-0.5 rounded-md text-xs font-bold text-gray-600 bg-gray-200">FREE</span>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-gray-700">Free Plan</p>
+                                        <p className="text-xs text-gray-500">3 events included. Upgrade for unlimited access.</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowUpgradeModal(true)}
+                                        className="shrink-0 flex items-center gap-1.5 rounded-lg bg-[#1A3D64] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#122d4a] transition-colors"
+                                    >
+                                        <Sparkles className="h-3 w-3" />
+                                        Upgrade
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
                         {/* Password Section */}
                         <div className="border-t pt-6">
                             <div className="flex items-center justify-between">
@@ -282,5 +329,7 @@ export default function ProfilePage() {
                 </div>
             </div>
         </div>
+        {showUpgradeModal && <UpgradeModal onClose={() => setShowUpgradeModal(false)} />}
+        </>
     );
 }

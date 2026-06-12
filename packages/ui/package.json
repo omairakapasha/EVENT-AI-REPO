@@ -6,9 +6,11 @@
     "license": "MIT",
     "scripts": {
         "lint": "eslint .",
+        "typecheck": "tsc --noEmit",
         "generate:component": "turbo gen react-component"
     },
     "dependencies": {
+        "@radix-ui/react-slot": "^1.2.3",
         "clsx": "^2.0.0",
         "tailwind-merge": "^2.0.0",
         "class-variance-authority": "^0.7.0",

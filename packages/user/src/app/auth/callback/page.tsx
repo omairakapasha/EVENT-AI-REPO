@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Calendar } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import Image from "next/image";
 
 /**
  * OAuth callback handler for the user portal.
@@ -72,8 +73,8 @@ function CallbackHandler() {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
             <div className="flex flex-col items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg">
-                    <Calendar className="h-6 w-6 text-white" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl shadow-lg overflow-hidden">
+                    <Image src="/logo.png" alt="Event-AI" width={48} height={48} className="object-contain" />
                 </div>
                 <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
                 <p className="text-sm text-gray-500">Completing sign-in...</p>
@@ -88,8 +89,8 @@ export default function AuthCallbackPage() {
             fallback={
                 <div className="min-h-screen flex items-center justify-center bg-gray-50">
                     <div className="flex flex-col items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                            <Calendar className="h-5 w-5 text-white" />
+                        <div className="h-10 w-10 rounded-xl flex items-center justify-center overflow-hidden">
+                            <Image src="/logo.png" alt="Event-AI" width={40} height={40} className="object-contain" />
                         </div>
                         <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
                     </div>

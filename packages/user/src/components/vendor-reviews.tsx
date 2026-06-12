@@ -5,6 +5,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Star, Send, Loader2, User } from 'lucide-react';
 import { getVendorReviews, submitReview } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { isAxiosError } from 'axios';
+
+interface Review {
+    id: string;
+    rating: number;
+    comment: string;
+    created_at: string;
+    user_name?: string;
+}
 
 function StarRating({ rating, onRate, interactive = false }: { rating: number; onRate?: (r: number) => void; interactive?: boolean }) {
     const [hovered, setHovered] = useState(0);
@@ -51,8 +60,9 @@ export function VendorReviews({ vendorId }: { vendorId: string }) {
             queryClient.invalidateQueries({ queryKey: ['reviews', vendorId] });
             queryClient.invalidateQueries({ queryKey: ['vendor', vendorId] });
         },
-        onError: (err: any) => {
-            toast.error(err.response?.data?.message || 'Failed to submit review');
+        onError: (err) => {
+            const data = isAxiosError(err) ? err.response?.data : undefined;
+            toast.error(data?.detail?.message || data?.message || 'Failed to submit review');
         },
     });
 
@@ -118,7 +128,7 @@ export function VendorReviews({ vendorId }: { vendorId: string }) {
                 </div>
             ) : (
                 <div className="space-y-3">
-                    {reviews.map((review: any) => (
+                    {reviews.map((review: Review) => (
                         <div key={review.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
@@ -126,11 +136,11 @@ export function VendorReviews({ vendorId }: { vendorId: string }) {
                                         <User className="h-4 w-4 text-indigo-600" />
                                     </div>
                                     <span className="text-sm font-medium text-gray-900">
-                                        {review.user?.firstName || review.userName || 'User'}
+                                        {review.user_name || 'User'}
                                     </span>
                                 </div>
                                 <span className="text-xs text-gray-400">
-                                    {new Date(review.createdAt).toLocaleDateString()}
+                                    {new Date(review.created_at).toLocaleDateString()}
                                 </span>
                             </div>
                             <StarRating rating={review.rating} />

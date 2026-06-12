@@ -53,37 +53,37 @@ function renderPage() {
 }
 
 beforeEach(() => {
-  mockUseSendMessage.mockReturnValue({ mutateAsync: jest.fn(), isPending: false } as ReturnType<typeof useSendMessage>)
+  mockUseSendMessage.mockReturnValue({ mutateAsync: jest.fn(), isPending: false } as unknown as ReturnType<typeof useSendMessage>)
 })
 
 describe('Booking Detail page', () => {
   it('renders booking fields correctly', async () => {
-    mockUseBookingDetail.mockReturnValue({ data: mockBooking, isLoading: false } as ReturnType<typeof useBookingDetail>)
-    mockUseBookingMessages.mockReturnValue({ data: mockMessages, isLoading: false } as ReturnType<typeof useBookingMessages>)
+    mockUseBookingDetail.mockReturnValue({ data: mockBooking, isLoading: false } as unknown as ReturnType<typeof useBookingDetail>)
+    mockUseBookingMessages.mockReturnValue({ data: mockMessages, isLoading: false } as unknown as ReturnType<typeof useBookingMessages>)
     renderPage()
     await waitFor(() => expect(screen.getByText('Alice Johnson')).toBeInTheDocument())
     expect(screen.getByText('Booking Details')).toBeInTheDocument()
   })
 
   it('renders messages from both parties', async () => {
-    mockUseBookingDetail.mockReturnValue({ data: mockBooking, isLoading: false } as ReturnType<typeof useBookingDetail>)
-    mockUseBookingMessages.mockReturnValue({ data: mockMessages, isLoading: false } as ReturnType<typeof useBookingMessages>)
+    mockUseBookingDetail.mockReturnValue({ data: mockBooking, isLoading: false } as unknown as ReturnType<typeof useBookingDetail>)
+    mockUseBookingMessages.mockReturnValue({ data: mockMessages, isLoading: false } as unknown as ReturnType<typeof useBookingMessages>)
     renderPage()
     await waitFor(() => expect(screen.getByText('Hello vendor!')).toBeInTheDocument())
     expect(screen.getByText('Hello client!')).toBeInTheDocument()
   })
 
   it('renders message input and Send button', async () => {
-    mockUseBookingDetail.mockReturnValue({ data: mockBooking, isLoading: false } as ReturnType<typeof useBookingDetail>)
-    mockUseBookingMessages.mockReturnValue({ data: [], isLoading: false } as ReturnType<typeof useBookingMessages>)
+    mockUseBookingDetail.mockReturnValue({ data: mockBooking, isLoading: false } as unknown as ReturnType<typeof useBookingDetail>)
+    mockUseBookingMessages.mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useBookingMessages>)
     renderPage()
     await waitFor(() => expect(screen.getByPlaceholderText('Type a message…')).toBeInTheDocument())
     expect(screen.getByText('Send')).toBeInTheDocument()
   })
 
   it('Send button is disabled when input is empty', async () => {
-    mockUseBookingDetail.mockReturnValue({ data: mockBooking, isLoading: false } as ReturnType<typeof useBookingDetail>)
-    mockUseBookingMessages.mockReturnValue({ data: [], isLoading: false } as ReturnType<typeof useBookingMessages>)
+    mockUseBookingDetail.mockReturnValue({ data: mockBooking, isLoading: false } as unknown as ReturnType<typeof useBookingDetail>)
+    mockUseBookingMessages.mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useBookingMessages>)
     renderPage()
     await waitFor(() => expect(screen.getByText('Send')).toBeInTheDocument())
     expect(screen.getByText('Send').closest('button')).toBeDisabled()

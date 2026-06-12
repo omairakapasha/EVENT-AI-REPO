@@ -5,11 +5,28 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
     ArrowLeft, Star, MapPin, Phone, Mail, Globe, Clock,
-    Calendar, Users, Package, Loader2, AlertCircle,
+    Calendar, Users, Package, AlertCircle,
 } from 'lucide-react';
 import { getVendorById } from '@/lib/api';
 import { VendorReviews } from '@/components/vendor-reviews';
 import { VendorGallery } from '@/components/vendor-gallery';
+
+interface VendorPricing {
+    basePrice?: number;
+    price?: number;
+}
+
+interface VendorService {
+    id: string;
+    name: string;
+    description?: string;
+    isActive?: boolean;
+    capacity?: number;
+    duration?: string;
+    featuredImage?: string;
+    images?: string[];
+    pricings?: VendorPricing[];
+}
 
 export default function VendorDetailPage() {
     const params = useParams();
@@ -57,7 +74,7 @@ export default function VendorDetailPage() {
     }
 
     const vendor = data.vendor || data.data || data;
-    const services = vendor.services || [];
+    const services: VendorService[] = vendor.services || [];
 
     return (
         <div className="max-w-4xl mx-auto px-4 py-8">
@@ -107,7 +124,7 @@ export default function VendorDetailPage() {
                 {(() => {
                     const galleryImages: string[] = [
                         ...(vendor.logoUrl ? [vendor.logoUrl] : []),
-                        ...services.flatMap((s: any) => [
+                        ...services.flatMap((s: VendorService) => [
                             ...(s.featuredImage ? [s.featuredImage] : []),
                             ...(Array.isArray(s.images) ? s.images : []),
                         ]),
@@ -152,7 +169,7 @@ export default function VendorDetailPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        {services.map((service: any) => (
+                        {services.map((service: VendorService) => (
                             <div key={service.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
                                 <div className="flex justify-between items-start mb-2">
                                     <h3 className="font-semibold text-gray-900">{service.name}</h3>
@@ -178,9 +195,9 @@ export default function VendorDetailPage() {
                                 </div>
 
                                 {/* Pricing */}
-                                {service.pricings?.length > 0 && (
+                                {(service.pricings?.length ?? 0) > 0 && (
                                     <p className="text-sm font-medium text-gray-900 mb-3">
-                                        From PKR {Math.min(...service.pricings.map((p: any) => p.basePrice || p.price || 0)).toLocaleString()}
+                                        From PKR {Math.min(...(service.pricings ?? []).map((p: VendorPricing) => p.basePrice || p.price || 0)).toLocaleString()}
                                     </p>
                                 )}
 

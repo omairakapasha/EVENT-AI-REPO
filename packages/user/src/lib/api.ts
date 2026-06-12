@@ -138,19 +138,63 @@ export const getUserBookings = async () => {
     return response.data;
 };
 
-export const cancelBooking = async (bookingId: string) => {
-    const response = await api.patch(`/bookings/${bookingId}/cancel`);
+export const cancelBooking = async (bookingId: string, reason?: string) => {
+    const response = await api.patch(`/bookings/${bookingId}/cancel`, { reason: reason ?? null });
     return response.data;
 };
 
-// Review API — note: backend uses /marketplace prefix
+// ── Quotes & counter-offers (negotiation loop) ───────────────────────────────
+
+export interface QuoteLineItem {
+    description: string;
+    quantity: number;
+    unit_price: number;
+    total: number;
+}
+
+export interface UserQuote {
+    id: string;
+    booking_id: string | null;
+    inquiry_id: string | null;
+    vendor_id: string;
+    line_items: QuoteLineItem[];
+    subtotal: number;
+    deposit_required: number;
+    currency: string;
+    valid_until: string | null;
+    status: 'draft' | 'sent' | 'accepted' | 'countered' | 'expired' | 'withdrawn';
+    notes: string | null;
+    round_number: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export const getBookingQuotes = async (bookingId: string): Promise<UserQuote[]> => {
+    const res = await api.get(`/bookings/${bookingId}/quotes`);
+    return res.data?.data ?? res.data ?? [];
+};
+
+export const acceptQuote = async (quoteId: string) => {
+    const res = await api.patch(`/quotes/${quoteId}/accept`);
+    return res.data;
+};
+
+export const submitCounterOffer = async (
+    quoteId: string,
+    payload: { proposed_total: number; message?: string },
+) => {
+    const res = await api.post(`/quotes/${quoteId}/counter`, payload);
+    return res.data;
+};
+
+// Review API
 export const getVendorReviews = async (vendorId: string) => {
-    const response = await api.get(`/marketplace/${vendorId}/reviews`);
+    const response = await api.get(`/vendors/${vendorId}/reviews`);
     return response.data;
 };
 
 export const submitReview = async (vendorId: string, data: { rating: number; comment: string }) => {
-    const response = await api.post(`/marketplace/${vendorId}/reviews`, data);
+    const response = await api.post(`/vendors/${vendorId}/reviews`, data);
     return response.data;
 };
 
@@ -187,6 +231,16 @@ export const resendVerificationEmail = async () => {
     return response.data;
 };
 
+// Subscription API
+export const getSubscriptionStatus = async (): Promise<{
+    subscription_status: "free" | "pro";
+    is_pro_active: boolean;
+    subscription_expires_at: string | null;
+}> => {
+    const response = await api.get("/subscriptions/me");
+    return response.data;
+};
+
 // Notifications API
 export const getUserNotifications = async () => {
     const response = await api.get("/notifications/");
@@ -200,5 +254,11 @@ export const markNotificationAsRead = async (id: string) => {
 
 export const markAllNotificationsAsRead = async () => {
     const response = await api.patch("/notifications/read-all");
+    return response.data;
+};
+
+// Terms & Conditions
+export const acceptTerms = async () => {
+    const response = await api.post("/users/accept-terms");
     return response.data;
 };

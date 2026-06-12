@@ -11,7 +11,18 @@ export interface Booking {
     event_name: string | null;
     client_name: string | null;
     client_email: string | null;
-    status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'rejected' | 'no_show';
+    status:
+        | 'pending'
+        | 'quoted'
+        | 'negotiating'
+        | 'accepted'
+        | 'awaiting_deposit'
+        | 'confirmed'
+        | 'in_progress'
+        | 'completed'
+        | 'cancelled'
+        | 'rejected'
+        | 'no_show';
     total_price: number;
     currency: string;
     event_location: Record<string, unknown> | null;

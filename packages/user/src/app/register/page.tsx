@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Calendar } from "lucide-react";
+import Image from "next/image";
 import { api } from "@/lib/api";
+import { isAxiosError } from "axios";
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -40,10 +41,11 @@ export default function RegisterPage() {
                 contactEmail: form.email,
             });
             router.push("/login?registered=true");
-        } catch (err: any) {
+        } catch (err) {
+            const data = isAxiosError(err) ? err.response?.data : undefined;
             const msg =
-                err.response?.data?.message ||
-                err.response?.data?.details?.[0]?.message ||
+                data?.message ||
+                data?.details?.[0]?.message ||
                 "Registration failed. Please try again.";
             setError(msg);
         } finally {
@@ -56,8 +58,8 @@ export default function RegisterPage() {
             <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
                 <div className="text-center">
                     <div className="flex items-center justify-center gap-2 mb-4">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600">
-                            <Calendar className="h-5 w-5 text-white" />
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden">
+                            <Image src="/logo.png" alt="Event-AI" width={36} height={36} className="object-contain" />
                         </div>
                         <span className="text-lg font-semibold text-gray-900">Event-AI</span>
                     </div>

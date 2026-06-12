@@ -44,13 +44,13 @@ function renderPage() {
 }
 
 beforeEach(() => {
-  mockUseConfirmBooking.mockReturnValue({ mutate: jest.fn(), isPending: false } as ReturnType<typeof useConfirmBooking>)
-  mockUseRejectBooking.mockReturnValue({ mutateAsync: jest.fn(), isPending: false } as ReturnType<typeof useRejectBooking>)
+  mockUseConfirmBooking.mockReturnValue({ mutate: jest.fn(), isPending: false } as unknown as ReturnType<typeof useConfirmBooking>)
+  mockUseRejectBooking.mockReturnValue({ mutateAsync: jest.fn(), isPending: false } as unknown as ReturnType<typeof useRejectBooking>)
 })
 
 describe('Bookings page', () => {
   it('renders filter tabs', async () => {
-    mockUseVendorBookings.mockReturnValue({ data: { data: mockBookings, meta: { total: 2, page: 1, limit: 20, pages: 1 } }, isLoading: false, isError: false } as ReturnType<typeof useVendorBookings>)
+    mockUseVendorBookings.mockReturnValue({ data: { data: mockBookings, meta: { total: 2, page: 1, limit: 20, pages: 1 } }, isLoading: false, isError: false } as unknown as ReturnType<typeof useVendorBookings>)
     renderPage()
     await waitFor(() => expect(screen.getByText('All')).toBeInTheDocument())
     expect(screen.getAllByText('pending').length).toBeGreaterThanOrEqual(1)
@@ -58,21 +58,21 @@ describe('Bookings page', () => {
   })
 
   it('renders booking rows with client names', async () => {
-    mockUseVendorBookings.mockReturnValue({ data: { data: mockBookings, meta: { total: 2, page: 1, limit: 20, pages: 1 } }, isLoading: false, isError: false } as ReturnType<typeof useVendorBookings>)
+    mockUseVendorBookings.mockReturnValue({ data: { data: mockBookings, meta: { total: 2, page: 1, limit: 20, pages: 1 } }, isLoading: false, isError: false } as unknown as ReturnType<typeof useVendorBookings>)
     renderPage()
     await waitFor(() => expect(screen.getByText('Alice Johnson')).toBeInTheDocument())
     expect(screen.getByText('Bob Smith')).toBeInTheDocument()
   })
 
   it('shows Confirm and Reject buttons for pending bookings', async () => {
-    mockUseVendorBookings.mockReturnValue({ data: { data: mockBookings, meta: { total: 2, page: 1, limit: 20, pages: 1 } }, isLoading: false, isError: false } as ReturnType<typeof useVendorBookings>)
+    mockUseVendorBookings.mockReturnValue({ data: { data: mockBookings, meta: { total: 2, page: 1, limit: 20, pages: 1 } }, isLoading: false, isError: false } as unknown as ReturnType<typeof useVendorBookings>)
     renderPage()
     await waitFor(() => expect(screen.getByText('Confirm')).toBeInTheDocument())
     expect(screen.getByText('Reject')).toBeInTheDocument()
   })
 
   it('opens reject modal when Reject is clicked', async () => {
-    mockUseVendorBookings.mockReturnValue({ data: { data: mockBookings, meta: { total: 2, page: 1, limit: 20, pages: 1 } }, isLoading: false, isError: false } as ReturnType<typeof useVendorBookings>)
+    mockUseVendorBookings.mockReturnValue({ data: { data: mockBookings, meta: { total: 2, page: 1, limit: 20, pages: 1 } }, isLoading: false, isError: false } as unknown as ReturnType<typeof useVendorBookings>)
     renderPage()
     await waitFor(() => expect(screen.getByText('Reject')).toBeInTheDocument())
     fireEvent.click(screen.getByText('Reject'))
@@ -81,7 +81,7 @@ describe('Bookings page', () => {
   })
 
   it('shows empty state when no bookings', async () => {
-    mockUseVendorBookings.mockReturnValue({ data: { data: [], meta: { total: 0, page: 1, limit: 20, pages: 0 } }, isLoading: false, isError: false } as ReturnType<typeof useVendorBookings>)
+    mockUseVendorBookings.mockReturnValue({ data: { data: [], meta: { total: 0, page: 1, limit: 20, pages: 0 } }, isLoading: false, isError: false } as unknown as ReturnType<typeof useVendorBookings>)
     renderPage()
     await waitFor(() => expect(screen.getByText('No bookings found')).toBeInTheDocument())
   })

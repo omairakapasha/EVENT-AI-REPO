@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
     Calendar, Search, MessageSquare, Shield, Sparkles, ArrowRight,
-    Star, MapPin, CheckCircle, Zap, Users, TrendingUp,
+    Star, CheckCircle, Zap, TrendingUp,
 } from "lucide-react";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -46,14 +46,14 @@ const features = [
 ];
 
 const eventTypes = [
-    { name: "Weddings", emoji: "💍", count: "2,400+" },
-    { name: "Mehndi", emoji: "🌿", count: "1,200+" },
-    { name: "Baraat", emoji: "🎊", count: "980+" },
-    { name: "Walima", emoji: "🌹", count: "870+" },
-    { name: "Birthdays", emoji: "🎂", count: "3,100+" },
-    { name: "Corporate", emoji: "💼", count: "1,500+" },
-    { name: "Conferences", emoji: "🎤", count: "640+" },
-    { name: "Parties", emoji: "🎉", count: "2,800+" },
+    { name: "Weddings", emoji: "💍" },
+    { name: "Mehndi", emoji: "🌿" },
+    { name: "Baraat", emoji: "🎊" },
+    { name: "Walima", emoji: "🌹" },
+    { name: "Birthdays", emoji: "🎂" },
+    { name: "Corporate", emoji: "💼" },
+    { name: "Conferences", emoji: "🎤" },
+    { name: "Parties", emoji: "🎉" },
 ];
 
 const testimonials = [
@@ -81,13 +81,6 @@ const testimonials = [
         avatar: "S",
         color: "from-[#96A78D] to-[#7a8f72]",
     },
-];
-
-const stats = [
-    { value: "10,000+", label: "Events Planned" },
-    { value: "500+", label: "Verified Vendors" },
-    { value: "4.9/5", label: "Average Rating" },
-    { value: "50+", label: "Cities Covered" },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -136,6 +129,13 @@ export default function HomePage() {
                             <ArrowRight className="h-5 w-5" />
                         </Link>
                         <Link
+                            href="/chat"
+                            className="inline-flex items-center gap-2 rounded-xl border border-[#1A3D64]/30 bg-[#EFECE3] px-8 py-4 text-base font-semibold text-[#1A3D64] shadow-sm hover:bg-[#e8e4da] hover:border-[#1A3D64]/50 hover:shadow active:scale-[0.98] transition-all duration-200"
+                        >
+                            <MessageSquare className="h-5 w-5" />
+                            Try AI Planner
+                        </Link>
+                        <Link
                             href="/marketplace"
                             className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-8 py-4 text-base font-semibold text-gray-700 shadow-sm hover:bg-gray-50 hover:border-gray-300 hover:shadow active:scale-[0.98] transition-all duration-200"
                         >
@@ -143,47 +143,6 @@ export default function HomePage() {
                         </Link>
                     </div>
 
-                    {/* Social proof */}
-                    <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-6 text-sm text-gray-500">
-                        <div className="flex items-center gap-2">
-                            <div className="flex -space-x-2">
-                                {["A", "B", "C", "D", "E"].map((l, i) => (
-                                    <div
-                                        key={l}
-                                        className="h-8 w-8 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white"
-                                        style={{
-                                            background: `linear-gradient(135deg, ${["#1A3D64", "#96A78D", "#2a5a8f", "#7a8f72", "#122d4a"][i]}, ${["#2a5a8f", "#7a8f72", "#1A3D64", "#96A78D", "#1A3D64"][i]})`,
-                                        }}
-                                    >
-                                        {l}
-                                    </div>
-                                ))}
-                            </div>
-                            <span>10,000+ events planned</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            {[1, 2, 3, 4, 5].map((i) => (
-                                <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
-                            ))}
-                            <span>4.9/5 from 2,000+ reviews</span>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* ── Stats Bar ── */}
-            <section className="border-y border-gray-100 bg-white py-10 px-4 sm:px-6 lg:px-8">
-                <div className="mx-auto max-w-7xl">
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-                        {stats.map((stat) => (
-                            <div key={stat.label} className="text-center">
-                                <p className="text-3xl font-bold bg-gradient-to-r from-[#1A3D64] to-[#96A78D] bg-clip-text text-transparent">
-                                    {stat.value}
-                                </p>
-                                <p className="mt-1 text-sm text-gray-500">{stat.label}</p>
-                            </div>
-                        ))}
-                    </div>
                 </div>
             </section>
 
@@ -210,7 +169,6 @@ export default function HomePage() {
                                 <h3 className="font-semibold text-gray-900 group-hover:text-[#1A3D64] transition-colors">
                                     {type.name}
                                 </h3>
-                                <p className="text-xs text-gray-400 mt-1">{type.count} events</p>
                             </Link>
                         ))}
                     </div>
@@ -229,7 +187,7 @@ export default function HomePage() {
                         </p>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {features.map((feature, i) => (
+                        {features.map((feature) => (
                             <div
                                 key={feature.title}
                                 className="group rounded-2xl border border-gray-100 bg-white p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
@@ -260,7 +218,7 @@ export default function HomePage() {
                             { step: "01", title: "Tell AI Your Vision", desc: "Describe your event — type, date, budget, and preferences. Our AI understands exactly what you need.", icon: Sparkles },
                             { step: "02", title: "Discover Vendors", desc: "Get personalized vendor recommendations. Browse profiles, reviews, and pricing to find your perfect match.", icon: Search },
                             { step: "03", title: "Book & Celebrate", desc: "Book services directly, manage everything in one dashboard, and focus on enjoying your event.", icon: CheckCircle },
-                        ].map((item, i) => (
+                        ].map((item) => (
                             <div key={item.step} className="relative text-center">
                                 <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1A3D64] to-[#2a5a8f] shadow-lg shadow-[#1A3D64]/20 mb-6">
                                     <item.icon className="h-8 w-8 text-white" />
@@ -281,10 +239,10 @@ export default function HomePage() {
                 <div className="mx-auto max-w-7xl">
                     <div className="text-center mb-16">
                         <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">Loved by Event Planners</h2>
-                        <p className="mt-4 text-lg text-gray-600">Join thousands of happy customers across Pakistan</p>
+                        <p className="mt-4 text-lg text-gray-600">Join happy customers across Pakistan</p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {testimonials.map((t, i) => (
+                        {testimonials.map((t) => (
                             <div
                                 key={t.name}
                                 className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm hover:shadow-md transition-shadow duration-200"
@@ -323,7 +281,7 @@ export default function HomePage() {
                                 Ready to Plan Your Event?
                             </h2>
                             <p className="mt-4 text-lg text-[#EFECE3]/80 max-w-xl mx-auto">
-                                Join 10,000+ event planners using Event-AI to create memorable experiences across Pakistan.
+                                Join Event-AI to create memorable experiences across Pakistan.
                             </p>
                             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
                                 <Link
@@ -349,8 +307,8 @@ export default function HomePage() {
                 <div className="mx-auto max-w-7xl">
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#1A3D64] to-[#96A78D]">
-                                <Calendar className="h-4 w-4 text-white" />
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden">
+                                <Image src="/logo.png" alt="Event-AI" width={32} height={32} className="object-contain" />
                             </div>
                             <span className="font-bold text-gray-900">Event-AI</span>
                         </div>

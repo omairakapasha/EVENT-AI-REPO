@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { ChevronLeft, ChevronRight, X, ZoomIn } from 'lucide-react';
 
 interface VendorGalleryProps {
@@ -28,11 +29,13 @@ export function VendorGallery({ images, vendorName }: VendorGalleryProps) {
             {/* Main Gallery */}
             <div className="space-y-3">
                 {/* Featured Image */}
-                <div className="group relative overflow-hidden rounded-xl bg-gray-100">
-                    <img
+                <div className="group relative h-72 overflow-hidden rounded-xl bg-gray-100">
+                    <Image
                         src={images[activeIndex]}
                         alt={`${vendorName} — image ${activeIndex + 1}`}
-                        className="h-72 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 768px"
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
                         onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.jpg'; }}
                     />
                     {/* Nav arrows */}
@@ -75,12 +78,14 @@ export function VendorGallery({ images, vendorName }: VendorGalleryProps) {
                             <button
                                 key={i}
                                 onClick={() => setActiveIndex(i)}
-                                className={`flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all ${i === activeIndex ? 'border-blue-500 ring-2 ring-blue-200' : 'border-transparent'}`}
+                                className={`relative h-16 w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all ${i === activeIndex ? 'border-blue-500 ring-2 ring-blue-200' : 'border-transparent'}`}
                             >
-                                <img
+                                <Image
                                     src={img}
                                     alt={`Thumbnail ${i + 1}`}
-                                    className="h-16 w-20 object-cover"
+                                    fill
+                                    sizes="80px"
+                                    className="object-cover"
                                     onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.jpg'; }}
                                 />
                             </button>
@@ -108,12 +113,18 @@ export function VendorGallery({ images, vendorName }: VendorGalleryProps) {
                     >
                         <ChevronLeft className="h-7 w-7" />
                     </button>
-                    <img
-                        src={images[activeIndex]}
-                        alt={`${vendorName} — image ${activeIndex + 1}`}
-                        className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain shadow-2xl"
+                    <div
+                        className="relative h-[90vh] w-[90vw]"
                         onClick={(e) => e.stopPropagation()}
-                    />
+                    >
+                        <Image
+                            src={images[activeIndex]}
+                            alt={`${vendorName} — image ${activeIndex + 1}`}
+                            fill
+                            sizes="90vw"
+                            className="rounded-xl object-contain shadow-2xl"
+                        />
+                    </div>
                     <button
                         className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
                         onClick={(e) => { e.stopPropagation(); next(); }}

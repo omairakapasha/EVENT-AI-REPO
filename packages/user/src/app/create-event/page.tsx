@@ -1,13 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, ArrowRight, ArrowLeft } from "lucide-react";
-import { cn } from "@repo/ui/lib/utils";
-import { createEvent } from "@/lib/api";
+import {
+    Loader2,
+    ArrowRight,
+    ArrowLeft,
+    Lock,
+    Sparkles,
+    CheckCircle,
+} from "lucide-react";
+import Link from "next/link";
+import { isAxiosError } from "axios";
+import { createEvent, getUserEvents, getSubscriptionStatus } from "@/lib/api";
 import { useRouter } from "next/navigation";
+import { UpgradeModal } from "@/components/upgrade-modal";
 
 const eventSchema = z.object({
     eventType: z.string().min(1, "Event type is required"),
@@ -20,11 +29,76 @@ const eventSchema = z.object({
 
 type EventFormValues = z.infer<typeof eventSchema>;
 
+const PRO_FEATURES = [
+    "Unlimited events",
+    "AI-powered planning assistant",
+    "Priority vendor matching",
+    "Bookings confirmed instantly (no deposit hold)",
+    "Dedicated support",
+];
+
+function UpgradeWall() {
+    const [showModal, setShowModal] = useState(false);
+    return (
+        <>
+        <div className="max-w-2xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+            <div className="bg-white shadow rounded-lg overflow-hidden">
+                {/* Header band */}
+                <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-8 py-6 text-white text-center">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
+                        <Lock className="h-6 w-6" />
+                    </div>
+                    <h2 className="text-2xl font-bold">Free plan limit reached</h2>
+                    <p className="mt-1 text-indigo-200 text-sm">
+                        Your free plan includes 3 events. Upgrade to Pro for unlimited events.
+                    </p>
+                </div>
+
+                {/* Pro feature list */}
+                <div className="px-8 py-6">
+                    <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
+                        What you get with Pro
+                    </p>
+                    <ul className="space-y-3">
+                        {PRO_FEATURES.map((f) => (
+                            <li key={f} className="flex items-center gap-3 text-sm text-gray-700">
+                                <CheckCircle className="h-4 w-4 shrink-0 text-indigo-500" />
+                                {f}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
+                {/* Actions */}
+                <div className="border-t border-gray-100 px-8 py-5 flex flex-col sm:flex-row gap-3">
+                    <button
+                        onClick={() => setShowModal(true)}
+                        className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+                    >
+                        <Sparkles className="h-4 w-4" />
+                        Upgrade to Pro
+                    </button>
+                    <Link
+                        href="/dashboard"
+                        className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                        Back to Dashboard
+                    </Link>
+                </div>
+            </div>
+        </div>
+        {showModal && <UpgradeModal onClose={() => setShowModal(false)} />}
+        </>
+    );
+}
+
 export default function CreateEventPage() {
     const router = useRouter();
     const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [limitReached, setLimitReached] = useState(false);
+    const [checking, setChecking] = useState(true);
 
     const form = useForm<EventFormValues>({
         resolver: zodResolver(eventSchema),
@@ -36,12 +110,37 @@ export default function CreateEventPage() {
         },
     });
 
+    // Proactive check: if free plan + already has an event, skip straight to upgrade wall
+    useEffect(() => {
+        async function checkLimit() {
+            try {
+                const [sub, eventsRes] = await Promise.all([
+                    getSubscriptionStatus(),
+                    getUserEvents(),
+                ]);
+                const isFree = !sub.is_pro_active;
+                const eventCount: number = eventsRes?.data?.items?.length
+                    ?? eventsRes?.data?.length
+                    ?? eventsRes?.items?.length
+                    ?? eventsRes?.events?.length
+                    ?? 0;
+                if (isFree && eventCount >= 3) {
+                    setLimitReached(true);
+                }
+            } catch {
+                // If check fails, let the form show — submit will catch the limit
+            } finally {
+                setChecking(false);
+            }
+        }
+        checkLimit();
+    }, []);
+
     const onSubmit = async (data: EventFormValues) => {
         setIsSubmitting(true);
         setError(null);
 
         try {
-            // Map form data to API format
             const eventData = {
                 eventType: data.eventType,
                 eventName: `${data.eventType.charAt(0).toUpperCase() + data.eventType.slice(1)} Event`,
@@ -54,15 +153,23 @@ export default function CreateEventPage() {
 
             const result = await createEvent(eventData);
 
-            // Redirect to dashboard or event details
             if (result?.event?.id) {
                 router.push(`/dashboard?eventId=${result.event.id}`);
             } else {
                 router.push("/dashboard");
             }
-        } catch (err: any) {
-            console.error("Failed to create event:", err);
-            setError(err?.response?.data?.error || "Failed to create event. Please try again.");
+        } catch (err) {
+            const data = isAxiosError(err) ? err.response?.data : undefined;
+            const code = data?.error?.code ?? data?.code;
+            if (isAxiosError(err) && err.response?.status === 403 && code === "SUBSCRIPTION_LIMIT_EXCEEDED") {
+                setLimitReached(true);
+            } else {
+                setError(
+                    data?.error?.message
+                    ?? data?.message
+                    ?? "Failed to create event. Please try again."
+                );
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -77,11 +184,23 @@ export default function CreateEventPage() {
         if (isValid) setStep(step + 1);
     };
 
+    if (checking) {
+        return (
+            <div className="flex min-h-[60vh] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+            </div>
+        );
+    }
+
+    if (limitReached) {
+        return <UpgradeWall />;
+    }
+
     return (
         <div className="max-w-2xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900">Create New Event</h1>
-                <p className="mt-2 text-sm text-gray-600">Let's plan your perfect event together.</p>
+                <p className="mt-2 text-sm text-gray-600">Let&apos;s plan your perfect event together.</p>
             </div>
 
             <div className="bg-white shadow rounded-lg p-8">
@@ -200,7 +319,7 @@ export default function CreateEventPage() {
                                 <ArrowLeft className="mr-2 h-4 w-4" /> Back
                             </button>
                         ) : (
-                            <div /> // Spacer
+                            <div />
                         )}
 
                         {step < 2 ? (
