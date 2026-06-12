@@ -101,3 +101,4 @@ packages/db.md
 # Cache and Tmp
 **/tmp/
 
+.next-dev/
