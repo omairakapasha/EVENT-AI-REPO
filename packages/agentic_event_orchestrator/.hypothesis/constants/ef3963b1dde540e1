@@ -1,4 +1,0 @@
-# file: C:\Users\omair\OneDrive\Desktop\Event\packages\agentic_event_orchestrator\tools\vendor_tools.py
-# hypothesis_version: 6.151.13
-
-[15.0, 200, 401, 403, 503, 'BACKEND_API_URL', 'available', 'business_name', 'category', 'city', 'code', 'comparison', 'data', 'edate', 'error', 'event_type', 'hybrid', 'id', 'limit', 'location', 'locked', 'locked_until', 'max_price', 'mode', 'price_max', 'price_min', 'q', 'rating', 'recommendations', 'services', 'sid', 'status', 'success', 'total', 'vendor_id', 'vendors', 'vid']

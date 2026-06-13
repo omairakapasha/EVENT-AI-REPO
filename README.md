@@ -57,7 +57,8 @@ DATABASE_URL=        # Neon PostgreSQL pooled URL
 DIRECT_URL=          # Neon PostgreSQL direct URL (Alembic only)
 JWT_SECRET_KEY=      # min 32 chars
 GEMINI_API_KEY=      # from Google AI Studio
-GEMINI_MODEL=        # e.g. gemini-2.5-flash-lite
+GEMINI_MODEL=        # e.g. gemini/gemini-2.5-flash
+THINKING_BUDGET=     # 0 disables Gemini extended thinking (prevents chat timeouts)
 GOOGLE_CLIENT_ID=    # Google OAuth2
 GOOGLE_CLIENT_SECRET=
 ```
@@ -93,6 +94,15 @@ uv run uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload
 # Terminal 3 — AI Orchestrator (port 8000)
 cd packages/agentic_event_orchestrator
 uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Or use the combined dev shortcuts from the repo root (backend + AI + one portal, via `concurrently`):
+
+```bash
+pnpm dev:u    # backend + AI orchestrator + user portal
+pnpm dev:v    # backend + AI orchestrator + vendor portal
+pnpm dev:a    # backend + AI orchestrator + admin portal
+pnpm dev:all  # backend + AI orchestrator + all three portals
 ```
 
 ---
@@ -145,7 +155,20 @@ User message
                                (multi-step coordination)
 ```
 
-Each agent has access to typed function tools: `vendor_tools`, `booking_tools`, `event_tools`, `notification_tools`, `mail_tools`.
+Each agent has access to typed function tools: `vendor_tools`, `booking_tools`, `event_tools`, `notification_tools`, `mail_tools`. Vendor search/comparison runs autonomously in one turn; booking, counter-offers, and cancellations always require an explicit user "confirm" before the tool call fires.
+
+### Negotiation loop
+
+Once a booking is created, vendor and customer can negotiate the price before confirming:
+
+```
+pending → vendor sends quote → quoted
+quoted  → customer counters → negotiating
+negotiating → vendor accepts counter → accepted
+accepted → customer pays deposit → awaiting_deposit → confirmed
+```
+
+Each transition emits a domain event (`booking.quoted`, `booking.counter_offered`, `booking.accepted`, `booking.counter_rejected`) which fans out to in-app notifications and email via the event bus.
 
 ### Tech stack
 
@@ -172,6 +195,10 @@ All backend routes are versioned under `/api/v1/`.
 | `/api/v1/vendors` | Vendor CRUD, services, availability |
 | `/api/v1/public_vendors` | Public vendor discovery (no auth) |
 | `/api/v1/bookings` | Booking lifecycle |
+| `/api/v1/bookings/{id}/quotes`, `/api/v1/quotes/*`, `/api/v1/counter-offers/*` | Vendor quotes + negotiation (counter-offers) |
+| `/api/v1/vendors/{id}/reviews` | Vendor reviews + ratings |
+| `/api/v1/subscriptions` | AI subscription plans + usage |
+| `/api/v1/admin/subscriptions` | Admin subscription grants/revokes |
 | `/api/v1/events` | Event management |
 | `/api/v1/services` | Vendor service listings |
 | `/api/v1/categories` | Service categories |

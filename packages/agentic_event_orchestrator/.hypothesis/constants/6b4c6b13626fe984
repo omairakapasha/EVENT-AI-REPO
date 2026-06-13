@@ -1,4 +1,0 @@
-# file: C:\Users\omair\OneDrive\Desktop\Event\packages\agentic_event_orchestrator\services\guardrail_hooks.py
-# hypothesis_version: 6.151.13
-
-[0.0, 'Bearer ', '[/USER_MSG_7f3a9b2e]', '[CNIC]', '[EMAIL]', '[PHONE]', '[USER_MSG_7f3a9b2e]', '\\b\\d{5}-\\d{7}-\\d\\b', 'api_key', 'content', 'password', 'role', 'secret', 'sk-', 'text', 'type', 'user']

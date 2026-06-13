@@ -1,4 +1,0 @@
-# file: C:\Users\omair\OneDrive\Desktop\Event\packages\agentic_event_orchestrator\services\code_shield.py
-# hypothesis_version: 6.151.13
-
-["'\\s*;\\s*--", "'\\s*OR\\s+1\\s*=\\s*1", '--\\s*$', '/\\*.*\\*/', ';\\s*DELETE\\s+FROM', ';\\s*DROP\\s+TABLE', 'AKIA[0-9A-Z]{16}', 'EXEC\\s*\\(', 'Scan error', '[REDACTED]', '\\$gt\\s*:\\s*\\{\\}', '\\$regex\\s*:', '\\$where\\s*:', '\\bBENCHMARK\\s*\\(', '\\bINTO\\s+OUTFILE', '\\bLOAD_FILE\\s*\\(', '\\bSLEEP\\s*\\(', '__import__\\s*\\(', '`([^`]+)`', 'compile\\s*\\(', 'details', 'eval\\s*\\(', 'exec\\s*\\(', 'exposed_secret', 'high', 'marshal\\.loads?\\s*\\(', 'match', 'medium', 'mysql', 'os\\.system\\s*\\(', 'pattern_index', 'pickle\\.loads?\\s*\\(', 'postgresql', 'py', 'python', 'scan_error', 'severity', 'sk-[A-Za-z0-9]{20,}', 'sql', 'sqlite', 'type', 'xp_cmdshell']

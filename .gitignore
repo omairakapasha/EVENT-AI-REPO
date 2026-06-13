@@ -53,6 +53,12 @@ pnpm-debug.log*
 # ── Testing ───────────────────────────────────────────────────────────────────
 coverage/
 .nyc_output/
+.hypothesis/
+test-results/
+playwright-report/
+
+# ── Generated preview assets ─────────────────────────────────────────────────
+*_preview.png
 
 # ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store

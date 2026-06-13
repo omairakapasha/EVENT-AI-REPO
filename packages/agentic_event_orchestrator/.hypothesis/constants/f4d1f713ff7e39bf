@@ -1,4 +1,0 @@
-# file: C:\Users\omair\OneDrive\Desktop\Event\packages\agentic_event_orchestrator\tools\booking_tools.py
-# hypothesis_version: 6.151.13
-
-[0.0, 300, 500, 10000, 'Cancelled by user', 'USD', 'booking_id', 'bookings', 'cancelled', 'completed', 'created_at', 'currency', 'error', 'event_date', 'event_name', 'guest_count', 'id', 'message', 'no_show', 'notes', 'now', 'payment_status', 'pending', 'quantity', 'reason', 'rejected', 'service_id', 'status', 'success', 'total', 'total_price', 'unit_price', 'updated_at', 'user_id', 'vendor_id']

@@ -1,4 +1,0 @@
-# file: C:\Users\omair\OneDrive\Desktop\Event\packages\agentic_event_orchestrator\service_auth.py
-# hypothesis_version: 6.151.13
-
-[b'dev-insecure-secret', '/', 'Content-Type', 'GET', 'PATCH', 'POST', 'SERVICE_SECRET', 'X-Service-Name', 'X-Service-Signature', 'X-Service-Timestamp', 'agentic-orchestrator', 'application/json', 'service_auth']
