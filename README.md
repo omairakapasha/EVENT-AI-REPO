@@ -1,10 +1,10 @@
 <div align="center">
 
-# Event-AI
+# Event AI
 
 **Plan any event in Pakistan by just talking to an AI.**
 
-Tell Event-AI what you need — a wedding venue, a caterer, a photographer — and a team of AI agents finds the right vendors, compares them, and walks you through booking. No more juggling ten browser tabs and twenty WhatsApp chats.
+Tell Event-AI what you need a wedding venue, a caterer, a photographer and a team of AI agents finds the right vendors, compares them, and walks you through booking. No more juggling ten browser tabs and twenty WhatsApp chats.
 
 [![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.136-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -113,7 +113,7 @@ You: "I need a wedding venue in Lahore for 300 guests under 500k"
                               (multi-step coordination)
 ```
 
-Each agent is given a small set of typed tools — `vendor_tools`, `booking_tools`, `event_tools`, `notification_tools`, `mail_tools`. Searching and comparing vendors happens automatically in a single turn. Anything that spends money or changes a booking (placing it, countering an offer, cancelling) always waits for you to say "confirm" first.
+Each agent is given a small set of typed tools  `vendor_tools`, `booking_tools`, `event_tools`, `notification_tools`, `mail_tools`. Searching and comparing vendors happens automatically in a single turn. Anything that spends money or changes a booking (placing it, countering an offer, cancelling) always waits for you to say "confirm" first.
 
 ### Negotiating a price
 
