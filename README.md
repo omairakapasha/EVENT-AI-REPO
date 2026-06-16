@@ -15,7 +15,7 @@ Tell Event-AI what you need a wedding venue, a caterer, a photographer and a tea
 
 </div>
 
-## What is Event-AI?
+## What is Event AI?
 
 Event planning is messy. You search for vendors in one place, message them somewhere else, track quotes in your notes app, and hope nobody double-books your date. Event-AI puts all of it in one place and adds an AI layer on top.
 
