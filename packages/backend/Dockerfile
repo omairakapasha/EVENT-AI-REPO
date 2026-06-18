@@ -42,10 +42,13 @@ ENV PATH="/app/.venv/bin:$PATH" \
 
 USER appuser
 
+# Port is injected by the platform ($PORT on Railway/Render); defaults to 5000 locally.
+ENV PORT=5000
 EXPOSE 5000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD python -c \
-        "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/v1/health')"
+        "import os,urllib.request; urllib.request.urlopen('http://localhost:'+os.environ.get('PORT','5000')+'/api/v1/health')"
 
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "5000", "--workers", "2"]
+# Shell form so ${PORT} expands at runtime — honors platform-injected port.
+CMD uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-5000} --workers 2

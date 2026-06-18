@@ -41,6 +41,10 @@ COPY --chown=appuser:appgroup models ./models
 COPY --chown=appuser:appgroup database ./database
 COPY --chown=appuser:appgroup guardrails.py rate_limiter.py service_auth.py ./
 
+# Alembic migrations — needed so the image can run `alembic upgrade head` on deploy
+COPY --chown=appuser:appgroup alembic ./alembic
+COPY --chown=appuser:appgroup alembic.ini ./
+
 # Activate venv via PATH
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -48,10 +52,13 @@ ENV PATH="/app/.venv/bin:$PATH" \
 
 USER appuser
 
+# Port is injected by the platform ($PORT on Railway/Render); defaults to 8000 locally.
+ENV PORT=8000
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD python -c \
-        "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+        "import os,urllib.request; urllib.request.urlopen('http://localhost:'+os.environ.get('PORT','8000')+'/health')"
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Shell form so ${PORT} expands at runtime — honors platform-injected port.
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}

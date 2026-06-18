@@ -1,0 +1,17 @@
+# Railway service config — AI Orchestrator (FastAPI)
+# Set this service's Root Directory to packages/agentic_event_orchestrator.
+# Railway injects $PORT; the Dockerfile CMD honors it.
+# Shares the Postgres DB with the backend (separate alembic_version_ai table).
+# Map APP_DATABASE_URL / DATABASE_URL / REDIS_URL in Variables.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Apply AI-side migrations (alembic_version_ai) before the new version goes live.
+preDeployCommand = "alembic upgrade head"
+healthcheckPath = "/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

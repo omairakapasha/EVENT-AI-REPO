@@ -1,0 +1,151 @@
+# ============================================================
+# Render Blueprint — Event-AI backend stack
+# ============================================================
+# Deploys the two Python (FastAPI) services + managed Postgres + Redis.
+# The 3 Next.js frontends go to Vercel (see packages/*/vercel.json), NOT here.
+#
+# Setup:
+#   1. Push this repo to GitHub.
+#   2. Render Dashboard → New → Blueprint → pick this repo.
+#   3. Fill the env vars marked `sync: false` (secrets) in the dashboard.
+#   4. After first deploy, enable pgvector on the DB (see note on the db block).
+#
+# Docs: https://render.com/docs/blueprint-spec
+# ============================================================
+
+databases:
+  - name: eventai-postgres
+    plan: basic-256mb           # bump as needed; pgvector supported on all paid plans
+    databaseName: eventai
+    user: eventai
+    # NOTE: pgvector — after the DB is live, run once via Render PSQL shell:
+    #   CREATE EXTENSION IF NOT EXISTS vector;
+    # (Alternatively keep using Neon and delete this block + the fromDatabase refs.)
+
+services:
+  # ── Redis (Key Value) ──────────────────────────────────────
+  - type: keyvalue
+    name: eventai-redis
+    plan: free
+    ipAllowList: []             # only reachable from Render private network
+
+  # ── Backend API (FastAPI) ──────────────────────────────────
+  - type: web
+    name: eventai-backend
+    runtime: docker
+    dockerfilePath: packages/backend/Dockerfile
+    dockerContext: packages/backend
+    plan: starter
+    healthCheckPath: /api/v1/health
+    # Apply migrations before traffic is routed to the new version.
+    preDeployCommand: alembic upgrade head
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: eventai-postgres
+          property: connectionString
+      - key: DIRECT_URL          # Alembic uses this; same URL works on Render
+        fromDatabase:
+          name: eventai-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: eventai-redis
+          property: connectionString
+      - key: AI_SERVICE_URL
+        fromService:
+          type: web
+          name: eventai-orchestrator
+          property: hostport      # internal host:port
+      - key: NODE_ENV
+        value: production
+      - key: API_VERSION
+        value: v1
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "15"
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: "7"
+      - key: AI_SERVICE_API_KEY
+        sync: false               # must match orchestrator's value
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false               # https://eventai-backend.onrender.com/api/v1/auth/google/callback
+      - key: CORS_ORIGINS
+        sync: false               # comma-separated prod Vercel domains
+      - key: FRONTEND_URL
+        sync: false
+      # Email (Brevo)
+      - key: SMTP_HOST
+        value: smtp-relay.brevo.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      # Object storage (R2 / S3)
+      - key: CDN_PROVIDER
+        value: r2
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        value: auto
+
+  # ── AI Orchestrator (FastAPI) ──────────────────────────────
+  - type: web
+    name: eventai-orchestrator
+    runtime: docker
+    dockerfilePath: packages/agentic_event_orchestrator/Dockerfile
+    dockerContext: packages/agentic_event_orchestrator
+    plan: starter
+    healthCheckPath: /health
+    preDeployCommand: alembic upgrade head
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: eventai-postgres
+          property: connectionString
+      - key: APP_DATABASE_URL
+        fromDatabase:
+          name: eventai-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: eventai-redis
+          property: connectionString
+      - key: BACKEND_API_URL
+        fromService:
+          type: web
+          name: eventai-backend
+          property: hostport
+      - key: AI_SERVICE_API_KEY
+        sync: false               # must match backend's value
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini/gemini-2.5-flash
+      - key: GEMINI_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai/
+      - key: MEM0_API_KEY
+        sync: false
+      - key: CHAINLIT_AUTH_SECRET
+        generateValue: true
+      - key: LOG_LEVEL
+        value: info

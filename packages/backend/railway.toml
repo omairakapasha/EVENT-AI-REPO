@@ -1,0 +1,17 @@
+# Railway service config — Backend API (FastAPI)
+# Set this service's Root Directory to packages/backend in the Railway dashboard.
+# Railway injects $PORT; the Dockerfile CMD honors it.
+# Provision Postgres (pgvector template) + Redis plugins, then map their
+# connection strings to DATABASE_URL / DIRECT_URL / REDIS_URL in Variables.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Apply DB migrations before the new version goes live.
+preDeployCommand = "alembic upgrade head"
+healthcheckPath = "/api/v1/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
