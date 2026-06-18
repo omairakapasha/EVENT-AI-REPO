@@ -224,7 +224,7 @@ class TestGuardrailService:
         assert "john.doe@example.com" not in filtered
     
     def test_filter_output_redacts_phone(self, service):
-        """Output filter should redact Pakistani phone numbers."""
+        """Output filter should redact phone numbers."""
         output = "Call me at 0300-1234567"
         filtered = service.filter_output(output)
         

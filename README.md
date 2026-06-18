@@ -2,7 +2,7 @@
 
 # Event AI
 
-**Plan any event in Pakistan by just talking to an AI.**
+**Plan any event by just talking to an AI.**
 
 Tell Event-AI what you need a wedding venue, a caterer, a photographer and a team of AI agents finds the right vendors, compares them, and walks you through booking. No more juggling ten browser tabs and twenty WhatsApp chats.
 
@@ -26,7 +26,7 @@ You chat with it in plain language. Behind the scenes, a pipeline of specialized
 - **Book** and negotiate the price right inside the chat
 - **Track** everything in real time across three dedicated portals
 
-It's built for Pakistan first, but the architecture isn't tied to any one market.
+It's built to scale globally — the architecture isn't tied to any one market.
 
 ## Quick start
 

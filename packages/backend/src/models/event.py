@@ -56,7 +56,7 @@ class Event(SQLModel, table=True):
     venue_name: Optional[str] = Field(default=None, max_length=255)
     address: Optional[str] = Field(default=None, max_length=500)
     city: Optional[str] = Field(default=None, max_length=100)
-    country: str = Field(default="Pakistan", max_length=100)
+    country: str = Field(max_length=100)
 
     # Planning details
     guest_count: Optional[int] = Field(default=None, ge=1)

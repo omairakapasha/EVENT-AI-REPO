@@ -201,7 +201,7 @@ class EmailService:
                     </table>
                     <p style="color: #666;">You will receive a confirmation once the vendor accepts your request.</p>
                     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                    <p style="font-size: 12px; color: #999;">Event-AI — Pakistan's Event Planning Marketplace</p>
+                    <p style="font-size: 12px; color: #999;">Event-AI — Event Planning Marketplace</p>
                 </div>
                 """,
             ),
@@ -218,7 +218,7 @@ class EmailService:
                     </table>
                     <p style="color: #666;">Contact the vendor for any additional details.</p>
                     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                    <p style="font-size: 12px; color: #999;">Event-AI — Pakistan's Event Planning Marketplace</p>
+                    <p style="font-size: 12px; color: #999;">Event-AI — Event Planning Marketplace</p>
                 </div>
                 """,
             ),
@@ -235,7 +235,7 @@ class EmailService:
                     </table>
                     <p style="color: #666;">If you have questions, please contact the vendor.</p>
                     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                    <p style="font-size: 12px; color: #999;">Event-AI — Pakistan's Event Planning Marketplace</p>
+                    <p style="font-size: 12px; color: #999;">Event-AI — Event Planning Marketplace</p>
                 </div>
                 """,
             ),
@@ -252,7 +252,7 @@ class EmailService:
                     </table>
                     <p style="color: #666;">You can search for alternative vendors on our platform.</p>
                     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                    <p style="font-size: 12px; color: #999;">Event-AI — Pakistan's Event Planning Marketplace</p>
+                    <p style="font-size: 12px; color: #999;">Event-AI — Event Planning Marketplace</p>
                 </div>
                 """,
             ),
@@ -269,7 +269,7 @@ class EmailService:
                     </table>
                     <p style="color: #666;">Help others by leaving a review for your vendor!</p>
                     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                    <p style="font-size: 12px; color: #999;">Event-AI — Pakistan's Event Planning Marketplace</p>
+                    <p style="font-size: 12px; color: #999;">Event-AI — Event Planning Marketplace</p>
                 </div>
                 """,
             ),
@@ -285,7 +285,7 @@ class EmailService:
                     </table>
                     <p style="color: #666;">Log in to your vendor portal to review and respond.</p>
                     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                    <p style="font-size: 12px; color: #999;">Event-AI — Pakistan's Event Planning Marketplace</p>
+                    <p style="font-size: 12px; color: #999;">Event-AI — Event Planning Marketplace</p>
                 </div>
                 """,
             ),

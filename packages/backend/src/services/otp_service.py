@@ -56,7 +56,7 @@ class OTPService:
         <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
             <div style="text-align: center; margin-bottom: 32px;">
                 <h1 style="color: #2563eb; font-size: 24px; margin: 0;">Event-AI</h1>
-                <p style="color: #6b7280; margin-top: 4px;">Pakistan's Event Planning Marketplace</p>
+                <p style="color: #6b7280; margin-top: 4px;">Event Planning Marketplace</p>
             </div>
             <h2 style="color: #111827; font-size: 20px;">Verify your email address</h2>
             <p style="color: #374151;">Hi {display_name},</p>
@@ -66,7 +66,7 @@ class OTPService:
             </div>
             <p style="color: #6b7280; font-size: 14px;">If you didn't create an account, you can safely ignore this email.</p>
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
-            <p style="color: #9ca3af; font-size: 12px; text-align: center;">Event-AI &mdash; Pakistan's Event Planning Marketplace</p>
+            <p style="color: #9ca3af; font-size: 12px; text-align: center;">Event-AI &mdash; Event Planning Marketplace</p>
         </div>
         """
         text_body = f"Your Event-AI verification code is: {code}\n\nIt expires in {otp_expiry_minutes} minutes."

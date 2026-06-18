@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
                     `- Or set \`GEMINI_API_KEY\` in your environment\n\n` +
                     `Here's what I can help with when fully connected:\n` +
                     `• 📋 Plan Events — Create weddings, birthdays, corporate events\n` +
-                    `• 🔍 Find Vendors — Search top-rated vendors in Pakistan\n` +
+                    `• 🔍 Find Vendors — Search top-rated vendors\n` +
                     `• 📅 Book Services — Reserve vendors for your event\n` +
                     `• 📊 Track Bookings — View and manage bookings`,
                 agent: "Demo Mode",
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
                             role: "user",
                             parts: [
                                 {
-                                    text: `You are Event-AI, an intelligent event planning assistant for Pakistan. Help users plan events, find vendors, and book services. Be friendly and use markdown formatting with emojis.
+                                    text: `You are Event-AI, an intelligent event planning assistant. Help users plan events, find vendors, and book services. Be friendly and use markdown formatting with emojis.
 
 User message: ${message}`,
                                 },

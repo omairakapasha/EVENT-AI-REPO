@@ -302,7 +302,7 @@ export default function ChatPage() {
                         <div>
                             <h2 className="text-2xl font-bold text-gray-900">How can I help you today?</h2>
                             <p className="mt-2 text-gray-500">
-                                I can help you plan weddings, find verified vendors in Pakistan, 
+                                I can help you plan weddings, find verified vendors, 
                                 manage your event timeline, or check availability for services.
                             </p>
                         </div>

@@ -50,11 +50,11 @@ export function TermsModal({ onAccept, isAccepting }: TermsModalProps) {
                     </section>
                     <section>
                         <h3 className="font-semibold text-gray-900 mb-1">6. Compliance</h3>
-                        <p>All administrative activities must comply with applicable Pakistani data protection and IT laws, including but not limited to the Prevention of Electronic Crimes Act 2016.</p>
+                        <p>All administrative activities must comply with applicable data protection and IT laws in the operating jurisdiction.</p>
                     </section>
                     <section>
                         <h3 className="font-semibold text-gray-900 mb-1">7. Governing Law</h3>
-                        <p>These Terms are governed by the laws of the Islamic Republic of Pakistan. Disputes shall be subject to the jurisdiction of the courts of Lahore, Punjab.</p>
+                        <p>These Terms are governed by the applicable laws of the user's jurisdiction. Disputes shall be subject to the courts of competent jurisdiction in that location.</p>
                     </section>
                 </div>
 

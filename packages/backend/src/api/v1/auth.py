@@ -577,7 +577,7 @@ async def request_password_reset(
     </p>
     <p style="color: #6b7280; font-size: 14px;">This link expires in 1 hour. If you did not request a password reset, you can safely ignore this email.</p>
     <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
-    <p style="color: #9ca3af; font-size: 12px;">Event-AI — Pakistan's Event Planning Marketplace</p>
+    <p style="color: #9ca3af; font-size: 12px;">Event-AI — Event Planning Marketplace</p>
 </div>
 """
     text_body = f"Reset your Event-AI password by visiting: {reset_link}\n\nThis link expires in 1 hour."

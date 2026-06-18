@@ -35,7 +35,7 @@ const mockBooking = {
   id: 'b1', vendor_id: 'vendor-1', service_id: 's1', user_id: 'u1',
   event_date: '2025-08-15', event_name: null, status: 'confirmed' as const,
   total_price: 500, currency: 'USD', client_name: 'Alice Johnson',
-  client_email: null, event_location: { city: 'Karachi', country: 'Pakistan' },
+  client_email: null, event_location: { city: 'Karachi', country: 'United States' },
   special_requirements: null, created_at: '2025-07-01T10:00:00Z', updated_at: '2025-07-01T10:00:00Z',
 }
 

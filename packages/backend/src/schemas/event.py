@@ -51,7 +51,7 @@ class EventCreate(BaseModel):
     venue_name: Optional[str] = Field(None, max_length=255)
     address: Optional[str] = Field(None, max_length=500)
     city: Optional[str] = Field(None, max_length=100)
-    country: str = Field("Pakistan", max_length=100)
+    country: str = Field(..., max_length=100)
     guest_count: Optional[int] = Field(None, ge=1)
     budget: Optional[float] = Field(None, ge=0)
     special_requirements: Optional[str] = Field(None, max_length=2000)

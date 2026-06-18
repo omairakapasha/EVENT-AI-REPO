@@ -96,7 +96,7 @@ events_table = Table(
     Column("venue_name", String(255)),
     Column("address", String(500)),
     Column("city", String(100)),
-    Column("country", String(100), default="Pakistan"),
+    Column("country", String(100), nullable=False),
     Column("guest_count", Integer),
     Column("budget", Float),
     Column("special_requirements", String(2000)),

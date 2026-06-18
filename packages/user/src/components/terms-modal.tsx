@@ -37,11 +37,11 @@ export function TermsModal({ onAccept, isAccepting }: TermsModalProps) {
                     </section>
                     <section>
                         <h3 className="font-semibold text-gray-900 mb-1">2. Platform Description</h3>
-                        <p>Event-AI is an AI-powered event planning marketplace connecting users with vendors for events in Pakistan. The Platform facilitates vendor discovery, booking coordination, and AI-assisted planning. Event-AI acts solely as an intermediary; all contracts are between users and vendors directly.</p>
+                        <p>Event-AI is an AI-powered event planning marketplace connecting users with vendors for events. The Platform facilitates vendor discovery, booking coordination, and AI-assisted planning. Event-AI acts solely as an intermediary; all contracts are between users and vendors directly.</p>
                     </section>
                     <section>
                         <h3 className="font-semibold text-gray-900 mb-1">3. User Responsibilities</h3>
-                        <p>You are responsible for (a) maintaining the confidentiality of your account; (b) all activity under your account; (c) ensuring information you provide is accurate and current; (d) complying with all applicable Pakistani laws and regulations when using the Platform.</p>
+                        <p>You are responsible for (a) maintaining the confidentiality of your account; (b) all activity under your account; (c) ensuring information you provide is accurate and current; (d) complying with all applicable laws and regulations when using the Platform.</p>
                     </section>
                     <section>
                         <h3 className="font-semibold text-gray-900 mb-1">4. Bookings & Payments</h3>
@@ -69,7 +69,7 @@ export function TermsModal({ onAccept, isAccepting }: TermsModalProps) {
                     </section>
                     <section>
                         <h3 className="font-semibold text-gray-900 mb-1">10. Governing Law</h3>
-                        <p>These Terms are governed by the laws of the Islamic Republic of Pakistan. Any disputes shall be subject to the exclusive jurisdiction of the courts of Lahore, Punjab.</p>
+                        <p>These Terms are governed by the applicable laws of the user's jurisdiction. Any disputes shall be subject to the courts of competent jurisdiction in that location.</p>
                     </section>
                 </div>
 

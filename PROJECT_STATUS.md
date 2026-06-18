@@ -1,6 +1,6 @@
 # Event-AI — Project Status
 **Last Updated:** May 3, 2026  
-**Platform:** AI-powered event planning marketplace for Pakistan  
+**Platform:** AI-powered event planning marketplace  
 **Stack:** FastAPI (Python/uv) + Next.js 15 + Neon PostgreSQL + pgvector + OpenAI Agents SDK
 
 ---
@@ -58,7 +58,7 @@
 - Admin approval workflow (`GET/POST /api/v1/admin/approvals/`)
 - Vendor search with trigram + ILIKE (`GET /api/v1/public_vendors/`)
 - Autocomplete suggestions (`GET /api/v1/public_vendors/suggestions`)
-- `GET /api/v1/categories/` — seeded with 8 Pakistani event categories
+- `GET /api/v1/categories/` — seeded with 8 event categories
 
 #### Event Management (Phase 2 / Module 005)
 - `EventStatus` state machine: `draft → planned → active → completed`, any → `canceled`

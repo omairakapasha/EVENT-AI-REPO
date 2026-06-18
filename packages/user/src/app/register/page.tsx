@@ -67,7 +67,7 @@ export default function RegisterPage() {
                         Create your account
                     </h2>
                     <p className="mt-2 text-sm text-gray-600">
-                        Start planning amazing events in Pakistan
+                        Start planning amazing events
                     </p>
                 </div>
 

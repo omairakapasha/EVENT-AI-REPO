@@ -6,7 +6,7 @@
 
 ## Project Overview
 
-**Event-AI** is an AI-powered event planning marketplace for Pakistan. It centralises vendor discovery, booking coordination, payment processing, and AI-assisted orchestration into one unified, event-driven platform.
+**Event-AI** is an AI-powered event planning marketplace. It centralises vendor discovery, booking coordination, payment processing, and AI-assisted orchestration into one unified, event-driven platform.
 
 **Core product areas:**
 
@@ -254,7 +254,7 @@ All models in `packages/backend/src/models/`. Pattern: `Base` → `table=True` c
 
 **`bookings`:** `id`, `user_id`, `vendor_id`, `service_id`, `event_date` (must be future), `status` (see state machine), `payment_status` (`pending`|`partial`|`paid`|`refunded`|`failed`), `unit_price`, `total_price`, `currency` (default `USD`), `event_location` (JSONB)
 
-**`events`:** `id`, `user_id`, `event_type_id`, `name`, `start_date`, `end_date`, `timezone` (default `Asia/Karachi`), `city`, `country` (default `Pakistan`), `status` (`draft`|`planned`|`active`|`completed`|`canceled`), `budget`, `guest_count`
+**`events`:** `id`, `user_id`, `event_type_id`, `name`, `start_date`, `end_date`, `timezone` (default `Asia/Karachi`), `city`, `country` (required), `status` (`draft`|`planned`|`active`|`completed`|`canceled`), `budget`, `guest_count`
 
 **`domain_events`** (append-only, never delete): `id`, `event_type`, `data` (JSONB), `source`, `user_id`, `correlation_id`, `timestamp`
 

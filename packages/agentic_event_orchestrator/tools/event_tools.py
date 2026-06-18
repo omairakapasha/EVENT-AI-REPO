@@ -285,7 +285,7 @@ async def create_event(
                 "guest_count": max(0, attendee_count) or None,
                 "budget": max(0.0, budget_pkr) or None,
                 "status": "draft",
-                "country": "Pakistan",
+                "country": "",
                 "timezone": "Asia/Karachi",
                 "created_at": now,
                 "updated_at": now,

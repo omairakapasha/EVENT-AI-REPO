@@ -219,7 +219,7 @@ DEMO_VENDORS = [
         "first_name": "Khalid",
         "last_name": "Mirza",
         "business_name": "Lahori Biryani House",
-        "description": "Authentic Pakistani catering for weddings and corporate events. Specialising in traditional Lahori cuisine, live counter setups, and bulk orders across Punjab.",
+        "description": "Authentic catering for weddings and corporate events. Specialising in traditional Lahori cuisine, live counter setups, and bulk orders across Punjab.",
         "contact_phone": "+92-300-1234567",
         "city": "Lahore",
         "region": "Punjab",

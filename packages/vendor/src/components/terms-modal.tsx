@@ -62,7 +62,7 @@ export function TermsModal({ onAccept, isAccepting }: TermsModalProps) {
                     </section>
                     <section>
                         <h3 className="font-semibold text-gray-900 mb-1">9. Governing Law</h3>
-                        <p>These Terms are governed by the laws of the Islamic Republic of Pakistan. Disputes shall be subject to the jurisdiction of the courts of Lahore, Punjab.</p>
+                        <p>These Terms are governed by the applicable laws of the user's jurisdiction. Disputes shall be subject to the courts of competent jurisdiction in that location.</p>
                     </section>
                 </div>
 

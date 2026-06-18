@@ -101,7 +101,7 @@ export default function HomePage() {
                     {/* Badge */}
                     <div className="inline-flex items-center gap-2 rounded-full bg-[#EFECE3] border border-[#96A78D]/30 px-4 py-1.5 text-sm font-semibold text-[#1A3D64] mb-6">
                         <Sparkles className="h-4 w-4" />
-                        AI-Powered Event Planning in Pakistan
+                        AI-Powered Event Planning, Worldwide
                     </div>
 
                     {/* Headline */}
@@ -239,7 +239,7 @@ export default function HomePage() {
                 <div className="mx-auto max-w-7xl">
                     <div className="text-center mb-16">
                         <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">Loved by Event Planners</h2>
-                        <p className="mt-4 text-lg text-gray-600">Join happy customers across Pakistan</p>
+                        <p className="mt-4 text-lg text-gray-600">Join happy customers worldwide</p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {testimonials.map((t) => (
@@ -281,7 +281,7 @@ export default function HomePage() {
                                 Ready to Plan Your Event?
                             </h2>
                             <p className="mt-4 text-lg text-[#EFECE3]/80 max-w-xl mx-auto">
-                                Join Event-AI to create memorable experiences across Pakistan.
+                                Join Event-AI to create memorable experiences worldwide.
                             </p>
                             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
                                 <Link

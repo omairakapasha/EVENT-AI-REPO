@@ -34,7 +34,7 @@ def make_event(
         start_date=datetime.now(timezone.utc) + timedelta(days=30),
         status=status,
         timezone="Asia/Karachi",
-        country="Pakistan",
+        country="United States",
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
     )

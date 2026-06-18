@@ -202,7 +202,7 @@ class VendorRepository:
         samples = [
             VendorRecord(
                 id="catering_001", name="Lahore Catering Excellence", category="catering",
-                description="Premium Pakistani cuisine for weddings and events",
+                description="Premium cuisine for weddings and events",
                 service_areas=["Lahore", "Islamabad"], pricing_min=50000, pricing_max=500000,
                 rating=4.5, total_reviews=120,
                 keywords=["wedding", "mehndi", "walima", "catering", "food", "traditional"]

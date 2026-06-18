@@ -8,7 +8,7 @@ async def start():
     await cl.Message(content="""
 🎉 **Welcome to the Agentic Event Orchestrator!**
 
-I can help you plan events in Pakistan using AI-powered agents. Just describe your event in natural language.
+I can help you plan events using AI-powered agents. Just describe your event in natural language.
 
 **Example:** "I want to plan a wedding for 200 people in Lahore on March 15th with a budget of PKR 500,000"
 

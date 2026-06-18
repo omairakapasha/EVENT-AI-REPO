@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Event-AI - Intelligent Event Planning Platform",
-  description: "Discover vendors, plan events, and book services with AI-powered recommendations for weddings, birthdays, and corporate events in Pakistan.",
+  description: "Discover vendors, plan events, and book services with AI-powered recommendations for weddings, birthdays, and corporate events.",
 };
 
 import { Providers } from "./providers";
