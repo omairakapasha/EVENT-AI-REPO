@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { isAxiosError } from "axios";
-import { createEvent, getUserEvents, getSubscriptionStatus } from "@/lib/api";
+import { createEvent, getEventTypes, getUserEvents, getSubscriptionStatus, type EventType } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { UpgradeModal } from "@/components/upgrade-modal";
 
@@ -100,6 +100,7 @@ export default function CreateEventPage() {
     const [error, setError] = useState<string | null>(null);
     const [limitReached, setLimitReached] = useState(false);
     const [checking, setChecking] = useState(true);
+    const [eventTypes, setEventTypes] = useState<EventType[]>([]);
 
     const form = useForm<EventFormValues>({
         resolver: zodResolver(eventSchema),
@@ -138,26 +139,40 @@ export default function CreateEventPage() {
         checkLimit();
     }, []);
 
+    useEffect(() => {
+        async function loadEventTypes() {
+            try {
+                const types = await getEventTypes();
+                setEventTypes(types);
+            } catch {
+                // Select will just show no options; submit will surface an error.
+            }
+        }
+        loadEventTypes();
+    }, []);
+
     const onSubmit = async (data: EventFormValues) => {
         setIsSubmitting(true);
         setError(null);
 
         try {
+            const selectedType = eventTypes.find((t) => t.id === data.eventType);
+
             const eventData = {
-                eventType: data.eventType,
-                eventName: `${data.eventType.charAt(0).toUpperCase() + data.eventType.slice(1)} Event`,
-                eventDate: data.date,
+                event_type_id: data.eventType,
+                name: `${selectedType?.name ?? "New"} Event`,
+                description: data.description || undefined,
+                start_date: new Date(data.date).toISOString(),
                 city: data.city,
                 country: data.country,
-                attendees: data.attendees,
+                guest_count: data.attendees,
                 budget: data.budget,
-                preferences: data.description ? [data.description] : [],
             };
 
             const result = await createEvent(eventData);
 
-            if (result?.event?.id) {
-                router.push(`/dashboard?eventId=${result.event.id}`);
+            if (result?.data?.id) {
+                router.push(`/dashboard?eventId=${result.data.id}`);
             } else {
                 router.push("/dashboard");
             }
@@ -238,10 +253,11 @@ export default function CreateEventPage() {
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
                                 >
                                     <option value="">Select type...</option>
-                                    <option value="wedding">Wedding</option>
-                                    <option value="corporate">Corporate</option>
-                                    <option value="birthday">Birthday</option>
-                                    <option value="other">Other</option>
+                                    {eventTypes.map((type) => (
+                                        <option key={type.id} value={type.id}>
+                                            {type.name}
+                                        </option>
+                                    ))}
                                 </select>
                                 {form.formState.errors.eventType && (
                                     <p className="mt-1 text-sm text-red-600">{form.formState.errors.eventType.message}</p>
@@ -252,6 +268,7 @@ export default function CreateEventPage() {
                                 <label className="block text-sm font-medium text-gray-700">Date</label>
                                 <input
                                     type="date"
+                                    min={new Date().toISOString().split("T")[0]}
                                     {...form.register("date")}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
                                 />

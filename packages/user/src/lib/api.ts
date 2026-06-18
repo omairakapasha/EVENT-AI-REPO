@@ -84,16 +84,29 @@ export const getVendorServices = async (vendorId: string) => {
 };
 
 // Event API
+export interface EventType {
+    id: string;
+    name: string;
+    description?: string;
+    icon?: string;
+    display_order: number;
+    is_active: boolean;
+}
+
+export const getEventTypes = async (): Promise<EventType[]> => {
+    const response = await api.get("/events/types");
+    return response.data?.data ?? [];
+};
+
 export const createEvent = async (data: {
-    eventType: string;
-    eventName?: string;
-    eventDate: string;
+    event_type_id: string;
+    name: string;
+    description?: string;
+    start_date: string;
     city?: string;
     country: string;
-    location?: string;
-    attendees?: number;
+    guest_count?: number;
     budget?: number;
-    preferences?: string[];
 }) => {
     const response = await api.post("/events", data);
     return response.data;
