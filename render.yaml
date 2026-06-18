@@ -1,29 +1,31 @@
 # ============================================================
-# Render Blueprint — Event-AI backend stack
+# Render Blueprint — Event-AI backend stack (FREE TIER)
 # ============================================================
-# Deploys the two Python (FastAPI) services + managed Postgres + Redis.
+# Deploys the two Python (FastAPI) services on Render's free plan + a free
+# Redis (Key Value) instance. Postgres stays on Neon's free tier (external —
+# Render no longer offers a free managed Postgres plan), set via sync:false
+# env vars below.
 # The 3 Next.js frontends go to Vercel (see packages/*/vercel.json), NOT here.
 #
 # Setup:
 #   1. Push this repo to GitHub.
 #   2. Render Dashboard → New → Blueprint → pick this repo.
-#   3. Fill the env vars marked `sync: false` (secrets) in the dashboard.
-#   4. After first deploy, enable pgvector on the DB (see note on the db block).
+#   3. Fill the env vars marked `sync: false` (secrets) in the dashboard,
+#      including DATABASE_URL / DIRECT_URL / APP_DATABASE_URL from Neon.
+#   4. In the Neon SQL console, run once: CREATE EXTENSION IF NOT EXISTS vector;
+#
+# Free-tier tradeoff: both web services spin down after ~15 min idle and take
+# a slow cold start (30-60s) on the next request — fine for a demo, noticeable
+# for real users. Render's exact free-tier limits change over time; verify
+# current numbers in the dashboard before relying on them.
 #
 # Docs: https://render.com/docs/blueprint-spec
 # ============================================================
 
-databases:
-  - name: eventai-postgres
-    plan: basic-256mb           # bump as needed; pgvector supported on all paid plans
-    databaseName: eventai
-    user: eventai
-    # NOTE: pgvector — after the DB is live, run once via Render PSQL shell:
-    #   CREATE EXTENSION IF NOT EXISTS vector;
-    # (Alternatively keep using Neon and delete this block + the fromDatabase refs.)
-
 services:
-  # ── Redis (Key Value) ──────────────────────────────────────
+  # ── Redis (Key Value) — free plan, used only for OTP email verification.
+  # Degrades gracefully if unavailable (see src/config/database.py) so this
+  # is optional, but it's free, so there's no reason to drop it.
   - type: keyvalue
     name: eventai-redis
     plan: free
@@ -35,19 +37,15 @@ services:
     runtime: docker
     dockerfilePath: packages/backend/Dockerfile
     dockerContext: packages/backend
-    plan: starter
+    plan: free
     healthCheckPath: /api/v1/health
     # Apply migrations before traffic is routed to the new version.
     preDeployCommand: alembic upgrade head
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: eventai-postgres
-          property: connectionString
-      - key: DIRECT_URL          # Alembic uses this; same URL works on Render
-        fromDatabase:
-          name: eventai-postgres
-          property: connectionString
+        sync: false               # Neon pooled connection string
+      - key: DIRECT_URL
+        sync: false               # Neon direct (unpooled) connection string — Alembic only
       - key: REDIS_URL
         fromService:
           type: keyvalue
@@ -113,18 +111,14 @@ services:
     runtime: docker
     dockerfilePath: packages/agentic_event_orchestrator/Dockerfile
     dockerContext: packages/agentic_event_orchestrator
-    plan: starter
+    plan: free
     healthCheckPath: /health
     preDeployCommand: alembic upgrade head
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: eventai-postgres
-          property: connectionString
+        sync: false               # same Neon pooled connection string as backend
       - key: APP_DATABASE_URL
-        fromDatabase:
-          name: eventai-postgres
-          property: connectionString
+        sync: false               # same value as DATABASE_URL above
       - key: REDIS_URL
         fromService:
           type: keyvalue
