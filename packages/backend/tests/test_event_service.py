@@ -169,6 +169,7 @@ async def test_create_event_emits_event_created():
         event_type_id=et_id,
         name="My Wedding",
         start_date=datetime.now(timezone.utc) + timedelta(days=60),
+        country="United States",
     )
 
     with patch("src.services.event_service.event_bus.emit", new_callable=AsyncMock) as mock_emit:
@@ -296,6 +297,7 @@ async def test_free_plan_create_event_allowed_when_no_existing_events():
         event_type_id=et_id,
         name="My First Event",
         start_date=datetime.now(timezone.utc) + timedelta(days=30),
+        country="United States",
     )
 
     with patch("src.services.event_service.event_bus.emit", new_callable=AsyncMock):
@@ -326,6 +328,7 @@ async def test_free_plan_create_event_blocked_when_event_exists():
         event_type_id=et_id,
         name="Second Event",
         start_date=datetime.now(timezone.utc) + timedelta(days=30),
+        country="United States",
     )
 
     with pytest.raises(HTTPException) as exc_info:
@@ -365,6 +368,7 @@ async def test_pro_plan_create_event_allowed_regardless_of_count():
         event_type_id=et_id,
         name="Another Pro Event",
         start_date=datetime.now(timezone.utc) + timedelta(days=30),
+        country="United States",
     )
 
     with patch("src.services.event_service.event_bus.emit", new_callable=AsyncMock):

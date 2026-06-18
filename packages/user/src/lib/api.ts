@@ -88,6 +88,8 @@ export const createEvent = async (data: {
     eventType: string;
     eventName?: string;
     eventDate: string;
+    city?: string;
+    country: string;
     location?: string;
     attendees?: number;
     budget?: number;

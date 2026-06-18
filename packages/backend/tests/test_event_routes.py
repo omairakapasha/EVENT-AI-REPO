@@ -104,7 +104,7 @@ async def test_create_event_201(client: AsyncClient, db_session):
 
     r = await client.post(
         "/api/v1/events/",
-        json={"event_type_id": et_id, "name": "My Wedding", "start_date": FUTURE},
+        json={"event_type_id": et_id, "country": "United States", "name": "My Wedding", "start_date": FUTURE},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert r.status_code == 201
@@ -118,7 +118,7 @@ async def test_create_event_invalid_event_type_422(client: AsyncClient, db_sessi
     token = await register_and_login(client, db_session)
     r = await client.post(
         "/api/v1/events/",
-        json={"event_type_id": str(uuid.uuid4()), "name": "Bad Event", "start_date": FUTURE},
+        json={"event_type_id": str(uuid.uuid4()), "country": "United States", "name": "Bad Event", "start_date": FUTURE},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert r.status_code == 422
@@ -132,7 +132,7 @@ async def test_create_event_past_start_date_422(client: AsyncClient, db_session)
 
     r = await client.post(
         "/api/v1/events/",
-        json={"event_type_id": et_id, "name": "Past Event", "start_date": PAST},
+        json={"event_type_id": et_id, "country": "United States", "name": "Past Event", "start_date": PAST},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert r.status_code == 422
@@ -146,7 +146,7 @@ async def test_create_event_end_before_start_422(client: AsyncClient, db_session
     r = await client.post(
         "/api/v1/events/",
         json={
-            "event_type_id": et_id, "name": "Bad Dates",
+            "event_type_id": et_id, "country": "United States", "name": "Bad Dates",
             "start_date": FUTURE2, "end_date": FUTURE,  # end before start
         },
         headers={"Authorization": f"Bearer {token}"},
@@ -165,7 +165,7 @@ async def test_list_events_pagination_meta(client: AsyncClient, db_session):
     for i in range(2):
         await client.post(
             "/api/v1/events/",
-            json={"event_type_id": et_id, "name": f"Event {i}", "start_date": FUTURE},
+            json={"event_type_id": et_id, "country": "United States", "name": f"Event {i}", "start_date": FUTURE},
             headers={"Authorization": f"Bearer {token}"},
         )
 
@@ -185,7 +185,7 @@ async def test_list_events_status_filter(client: AsyncClient, db_session):
 
     await client.post(
         "/api/v1/events/",
-        json={"event_type_id": et_id, "name": "Planned Event", "start_date": FUTURE},
+        json={"event_type_id": et_id, "country": "United States", "name": "Planned Event", "start_date": FUTURE},
         headers={"Authorization": f"Bearer {token}"},
     )
 
@@ -207,7 +207,7 @@ async def test_get_event_200(client: AsyncClient, db_session):
 
     create_r = await client.post(
         "/api/v1/events/",
-        json={"event_type_id": et_id, "name": "Get Me", "start_date": FUTURE},
+        json={"event_type_id": et_id, "country": "United States", "name": "Get Me", "start_date": FUTURE},
         headers={"Authorization": f"Bearer {token}"},
     )
     event_id = create_r.json()["data"]["id"]
@@ -232,7 +232,7 @@ async def test_get_event_404_wrong_user(client: AsyncClient, db_session):
 
     create_r = await client.post(
         "/api/v1/events/",
-        json={"event_type_id": et_id, "name": "Private Event", "start_date": FUTURE},
+        json={"event_type_id": et_id, "country": "United States", "name": "Private Event", "start_date": FUTURE},
         headers={"Authorization": f"Bearer {token1}"},
     )
     event_id = create_r.json()["data"]["id"]
@@ -250,7 +250,7 @@ async def test_update_event_200(client: AsyncClient, db_session):
 
     create_r = await client.post(
         "/api/v1/events/",
-        json={"event_type_id": et_id, "name": "Old Name", "start_date": FUTURE},
+        json={"event_type_id": et_id, "country": "United States", "name": "Old Name", "start_date": FUTURE},
         headers={"Authorization": f"Bearer {token}"},
     )
     event_id = create_r.json()["data"]["id"]
@@ -271,7 +271,7 @@ async def test_update_event_terminal_status_409(client: AsyncClient, db_session)
 
     create_r = await client.post(
         "/api/v1/events/",
-        json={"event_type_id": et_id, "name": "To Cancel", "start_date": FUTURE},
+        json={"event_type_id": et_id, "country": "United States", "name": "To Cancel", "start_date": FUTURE},
         headers={"Authorization": f"Bearer {token}"},
     )
     event_id = create_r.json()["data"]["id"]
@@ -298,7 +298,7 @@ async def test_cancel_event_200(client: AsyncClient, db_session):
 
     create_r = await client.post(
         "/api/v1/events/",
-        json={"event_type_id": et_id, "name": "Cancel Me", "start_date": FUTURE},
+        json={"event_type_id": et_id, "country": "United States", "name": "Cancel Me", "start_date": FUTURE},
         headers={"Authorization": f"Bearer {token}"},
     )
     event_id = create_r.json()["data"]["id"]
@@ -318,7 +318,7 @@ async def test_cancel_already_canceled_409(client: AsyncClient, db_session):
 
     create_r = await client.post(
         "/api/v1/events/",
-        json={"event_type_id": et_id, "name": "Cancel Twice", "start_date": FUTURE},
+        json={"event_type_id": et_id, "country": "United States", "name": "Cancel Twice", "start_date": FUTURE},
         headers={"Authorization": f"Bearer {token}"},
     )
     event_id = create_r.json()["data"]["id"]
@@ -337,7 +337,7 @@ async def test_duplicate_event_201(client: AsyncClient, db_session):
 
     create_r = await client.post(
         "/api/v1/events/",
-        json={"event_type_id": et_id, "name": "Original", "start_date": FUTURE},
+        json={"event_type_id": et_id, "country": "United States", "name": "Original", "start_date": FUTURE},
         headers={"Authorization": f"Bearer {token}"},
     )
     event_id = create_r.json()["data"]["id"]
@@ -372,7 +372,7 @@ async def test_list_event_bookings_empty(client: AsyncClient, db_session):
 
     create_r = await client.post(
         "/api/v1/events/",
-        json={"event_type_id": et_id, "name": "No Bookings", "start_date": FUTURE},
+        json={"event_type_id": et_id, "country": "United States", "name": "No Bookings", "start_date": FUTURE},
         headers={"Authorization": f"Bearer {token}"},
     )
     event_id = create_r.json()["data"]["id"]

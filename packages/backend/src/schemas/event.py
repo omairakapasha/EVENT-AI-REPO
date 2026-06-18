@@ -47,7 +47,7 @@ class EventCreate(BaseModel):
     description: Optional[str] = Field(None, max_length=5000)
     start_date: datetime
     end_date: Optional[datetime] = None
-    timezone: str = Field("Asia/Karachi", max_length=50)
+    timezone: str = Field("UTC", max_length=50)
     venue_name: Optional[str] = Field(None, max_length=255)
     address: Optional[str] = Field(None, max_length=500)
     city: Optional[str] = Field(None, max_length=100)

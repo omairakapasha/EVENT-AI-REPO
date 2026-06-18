@@ -23,7 +23,8 @@ const eventSchema = z.object({
     date: z.string().min(1, "Date is required"),
     attendees: z.number().min(1, "At least 1 attendee required"),
     budget: z.number().min(100, "Minimum budget is 100"),
-    location: z.string().min(1, "Location is required"),
+    city: z.string().min(1, "City is required"),
+    country: z.string().min(1, "Country is required"),
     description: z.string().optional(),
 });
 
@@ -106,7 +107,8 @@ export default function CreateEventPage() {
             eventType: "",
             attendees: 50,
             budget: 5000,
-            location: "",
+            city: "",
+            country: "",
         },
     });
 
@@ -145,7 +147,8 @@ export default function CreateEventPage() {
                 eventType: data.eventType,
                 eventName: `${data.eventType.charAt(0).toUpperCase() + data.eventType.slice(1)} Event`,
                 eventDate: data.date,
-                location: data.location,
+                city: data.city,
+                country: data.country,
                 attendees: data.attendees,
                 budget: data.budget,
                 preferences: data.description ? [data.description] : [],
@@ -178,7 +181,7 @@ export default function CreateEventPage() {
     const nextStep = async () => {
         const fields = step === 1
             ? ["eventType", "date", "attendees"] as const
-            : ["budget", "location", "description"] as const;
+            : ["budget", "city", "country", "description"] as const;
 
         const isValid = await form.trigger(fields);
         if (isValid) setStep(step + 1);
@@ -286,14 +289,26 @@ export default function CreateEventPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Location / City</label>
+                                <label className="block text-sm font-medium text-gray-700">City</label>
                                 <input
                                     type="text"
-                                    {...form.register("location")}
+                                    {...form.register("city")}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
                                 />
-                                {form.formState.errors.location && (
-                                    <p className="mt-1 text-sm text-red-600">{form.formState.errors.location.message}</p>
+                                {form.formState.errors.city && (
+                                    <p className="mt-1 text-sm text-red-600">{form.formState.errors.city.message}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Country</label>
+                                <input
+                                    type="text"
+                                    {...form.register("country")}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                                />
+                                {form.formState.errors.country && (
+                                    <p className="mt-1 text-sm text-red-600">{form.formState.errors.country.message}</p>
                                 )}
                             </div>
 

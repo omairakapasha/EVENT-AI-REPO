@@ -161,6 +161,8 @@ async def create_event(
     event_type: str,
     event_name: str,
     event_date: str,
+    city: str = "",
+    country: str = "",
     location: str = "",
     attendee_count: int = 0,
     budget_pkr: float = 0,
@@ -172,6 +174,10 @@ async def create_event(
       'Walima', 'Reception', 'Birthday', 'Birthday Party', 'Anniversary',
       'Corporate', 'Team Building', 'Annual Dinner', 'Conference', 'Seminar',
       'Workshop', 'Party', 'Gathering', 'Engagement', 'Graduation', etc.
+
+    Location: ALWAYS capture `country` (required) and `city` for the event. If the
+    user has not given a country, ask before creating. `location` is accepted as a
+    legacy free-text fallback (used as the city when `city` is empty).
     Returns a JSON string with the created event ID and details."""
     try:
         from sqlalchemy import text as sa_text
@@ -264,6 +270,15 @@ async def create_event(
                     "Upgrade to Pro for unlimited events."
                 )
 
+        # Resolve location: prefer explicit city; fall back to legacy free-text location.
+        resolved_city = (city or location).strip() or None
+        resolved_country = country.strip()
+        if not resolved_country:
+            return _err(
+                "Missing country for the event. Ask the user which country the event "
+                "is in (and the city, if known), then call create_event again."
+            )
+
         event_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
 
@@ -281,12 +296,12 @@ async def create_event(
                 "event_type_id": event_type_id,
                 "name": event_name,
                 "start_date": start_date,
-                "city": location or None,
+                "city": resolved_city,
                 "guest_count": max(0, attendee_count) or None,
                 "budget": max(0.0, budget_pkr) or None,
                 "status": "draft",
-                "country": "",
-                "timezone": "Asia/Karachi",
+                "country": resolved_country,
+                "timezone": "UTC",
                 "created_at": now,
                 "updated_at": now,
             },
@@ -302,7 +317,8 @@ async def create_event(
                 "name": event_name,
                 "event_type": et_row.name,
                 "start_date": start_date.isoformat(),
-                "city": location or None,
+                "city": resolved_city,
+                "country": resolved_country,
                 "guest_count": max(0, attendee_count) or None,
                 "budget": max(0.0, budget_pkr) or None,
                 "status": "draft",

@@ -91,7 +91,7 @@ class TestCreateEvent:
         ctx = make_ctx(user_id)
 
         result = await _call(
-            create_event, ctx,
+            create_event, ctx, country="United States",
             event_type="Mehndi", event_name="Ali's Mehndi Night",
             event_date="2030-06-20", location="Lahore",
             attendee_count=200, budget_pkr=500000,
@@ -109,7 +109,7 @@ class TestCreateEvent:
         ctx = make_ctx(user_id)
 
         result = await _call(
-            create_event, ctx,
+            create_event, ctx, country="United States",
             event_type="nikah", event_name="Nikah Ceremony",
             event_date="2030-07-01",
         )
@@ -123,7 +123,7 @@ class TestCreateEvent:
         ctx = make_ctx(user_id)
 
         result = await _call(
-            create_event, ctx,
+            create_event, ctx, country="United States",
             event_type="absolutely_unknown_xyz", event_name="Test",
             event_date="2030-08-01",
         )
@@ -138,7 +138,7 @@ class TestCreateEvent:
         ctx = make_ctx(user_id)
 
         result = await _call(
-            create_event, ctx,
+            create_event, ctx, country="United States",
             event_type="Baraat", event_name="Baraat Ceremony",
             event_date="not-a-date",
         )
@@ -152,7 +152,7 @@ class TestCreateEvent:
         ctx = make_ctx(user_id)
 
         result = await _call(
-            create_event, ctx,
+            create_event, ctx, country="United States",
             event_type="Walima", event_name="Reception Dinner",
             event_date="2030-09-15", location="Karachi",
             attendee_count=300, budget_pkr=1000000,
@@ -176,7 +176,7 @@ class TestCreateEvent:
         ctx = make_ctx(user_id)
 
         result = await _call(
-            create_event, ctx,
+            create_event, ctx, country="United States",
             event_type="Birthday Party", event_name="Surprise Party",
             event_date="2030-10-01T18:00:00",
         )
@@ -192,7 +192,7 @@ class TestCreateEvent:
         # Create 3 events to hit the limit
         for i in range(3):
             r = await _call(
-                create_event, ctx,
+                create_event, ctx, country="United States",
                 event_type="Conference", event_name=f"Conf {i}",
                 event_date="2030-11-01",
             )
@@ -200,7 +200,7 @@ class TestCreateEvent:
 
         # 4th must be blocked
         result = await _call(
-            create_event, ctx,
+            create_event, ctx, country="United States",
             event_type="Conference", event_name="One Too Many",
             event_date="2030-11-01",
         )
@@ -215,7 +215,7 @@ class TestCreateEvent:
 
         for i in range(4):
             result = await _call(
-                create_event, ctx,
+                create_event, ctx, country="United States",
                 event_type="Party", event_name=f"Party {i}",
                 event_date="2030-12-01",
             )
@@ -243,7 +243,7 @@ class TestGetUserEvents:
         ctx = make_ctx(user_id)
 
         cr = await _call(
-            create_event, ctx,
+            create_event, ctx, country="United States",
             event_type="Engagement", event_name="Our Engagement",
             event_date="2030-11-01",
         )
@@ -262,7 +262,7 @@ class TestGetUserEvents:
         ctx_b = make_ctx(user_b_id)
 
         cr = await _call(
-            create_event, ctx_a,
+            create_event, ctx_a, country="United States",
             event_type="Graduation", event_name="My Graduation",
             event_date="2030-12-01",
         )
@@ -279,7 +279,7 @@ class TestGetUserEvents:
         ctx = make_ctx(user_id)
 
         await _call(
-            create_event, ctx,
+            create_event, ctx, country="United States",
             event_type="Corporate", event_name="Annual Conference",
             event_date="2031-01-15", location="Islamabad",
             attendee_count=500, budget_pkr=2000000,
@@ -303,7 +303,7 @@ class TestGetEventDetails:
         ctx = make_ctx(user_id)
 
         cr = await _call(
-            create_event, ctx,
+            create_event, ctx, country="United States",
             event_type="Seminar", event_name="Tech Seminar",
             event_date="2031-02-01", location="Rawalpindi",
             attendee_count=100, budget_pkr=300000,
@@ -325,7 +325,7 @@ class TestGetEventDetails:
         ctx_other = make_ctx(other_id)
 
         cr = await _call(
-            create_event, ctx_owner,
+            create_event, ctx_owner, country="United States",
             event_type="Workshop", event_name="Private Workshop",
             event_date="2031-03-01",
         )
@@ -354,7 +354,7 @@ class TestUpdateEventStatus:
         ctx = make_ctx(user_id)
 
         cr = await _call(
-            create_event, ctx,
+            create_event, ctx, country="United States",
             event_type="Nikah", event_name="Nikah Ceremony",
             event_date="2031-04-01",
         )
@@ -376,7 +376,7 @@ class TestUpdateEventStatus:
         ctx = make_ctx(user_id)
 
         cr = await _call(
-            create_event, ctx,
+            create_event, ctx, country="United States",
             event_type="Aqeeqa", event_name="Aqeeqa",
             event_date="2031-05-01",
         )
@@ -395,7 +395,7 @@ class TestUpdateEventStatus:
         ctx_other = make_ctx(other_id)
 
         cr = await _call(
-            create_event, ctx_owner,
+            create_event, ctx_owner, country="United States",
             event_type="Gathering", event_name="Private Gathering",
             event_date="2031-06-01",
         )
@@ -413,7 +413,7 @@ class TestUpdateEventStatus:
         ctx = make_ctx(user_id)
 
         cr = await _call(
-            create_event, ctx,
+            create_event, ctx, country="United States",
             event_type=et_name, event_name=f"Event-{status}",
             event_date="2031-07-01",
         )
