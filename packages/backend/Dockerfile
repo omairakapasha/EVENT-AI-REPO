@@ -34,8 +34,8 @@ COPY --from=builder --chown=appuser:appgroup /app/.venv /app/.venv
 COPY --chown=appuser:appgroup src ./src
 COPY --chown=appuser:appgroup alembic ./alembic
 COPY --chown=appuser:appgroup alembic.ini ./
-COPY --chown=appuser:appgroup start.sh ./
-RUN chmod +x start.sh
+COPY --chown=appuser:appgroup start.sh run_migrations.py ./
+RUN chmod +x start.sh run_migrations.py
 
 # Activate venv via PATH
 ENV PATH="/app/.venv/bin:$PATH" \
