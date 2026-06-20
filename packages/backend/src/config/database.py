@@ -25,8 +25,8 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = Field(7, description="Refresh token TTL in days")
 
     # CORS origins (comma-separated in env)
-    cors_origins: list[str] = Field(
-        default=["http://localhost:3000", "http://localhost:3002", "http://localhost:3003", "http://localhost:3004"],
+    cors_origins: str | list[str] = Field(
+        default="http://localhost:3000,http://localhost:3002,http://localhost:3003,http://localhost:3004",
         description="Allowed CORS origins"
     )
 
