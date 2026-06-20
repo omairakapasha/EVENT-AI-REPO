@@ -42,7 +42,7 @@ export function TermsModal({ onAccept, isAccepting }: TermsModalProps) {
                     </section>
                     <section>
                         <h3 className="font-semibold text-gray-900 mb-1">4. Platform Commission</h3>
-                        <p>Event-AI charges a platform commission on completed bookings as per the current fee schedule. Commission rates are subject to change with 30 days' written notice.</p>
+                        <p>Event-AI charges a platform commission on completed bookings as per the current fee schedule. Commission rates are subject to change with 30 days&apos; written notice.</p>
                     </section>
                     <section>
                         <h3 className="font-semibold text-gray-900 mb-1">5. Conduct Standards</h3>
@@ -62,7 +62,7 @@ export function TermsModal({ onAccept, isAccepting }: TermsModalProps) {
                     </section>
                     <section>
                         <h3 className="font-semibold text-gray-900 mb-1">9. Governing Law</h3>
-                        <p>These Terms are governed by the applicable laws of the user's jurisdiction. Disputes shall be subject to the courts of competent jurisdiction in that location.</p>
+                        <p>These Terms are governed by the applicable laws of the user&apos;s jurisdiction. Disputes shall be subject to the courts of competent jurisdiction in that location.</p>
                     </section>
                 </div>
 

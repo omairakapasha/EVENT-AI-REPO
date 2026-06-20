@@ -30,6 +30,8 @@ export default function ApiIntegrationPage() {
     const createKey = useCreateApiKey();
     const revokeKey = useRevokeApiKey();
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional
+    // client-only mount guard to avoid SSR/hydration mismatch.
     useEffect(() => { setHasMounted(true); }, []);
 
     useEffect(() => {
@@ -123,7 +125,7 @@ export default function ApiIntegrationPage() {
                         className="mt-3 text-sm text-amber-700 hover:text-amber-900 flex items-center gap-1"
                     >
                         <CheckCircle className="h-4 w-4" />
-                        I've saved my key — dismiss
+                        I&apos;ve saved my key — dismiss
                     </button>
                 </div>
             )}

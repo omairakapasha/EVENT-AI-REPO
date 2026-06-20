@@ -10,6 +10,22 @@ import { cn } from "@repo/ui/lib/utils";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 
+interface AdminUser {
+    id: string;
+    email: string;
+    role: string;
+    subscription_status?: string;
+    first_name?: string;
+    firstName?: string;
+    last_name?: string;
+    lastName?: string;
+    email_verified?: boolean;
+    emailVerified?: boolean;
+    last_login_at?: string;
+    lastLoginAt?: string;
+    vendor?: { business_name?: string; name?: string; status?: string };
+}
+
 export default function UsersPage() {
     const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
@@ -133,7 +149,7 @@ export default function UsersPage() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        {users.map((user: any) => {
+                        {users.map((user: AdminUser) => {
                             const isPro = user.subscription_status === "pro";
                             const isActing = actionUserId === user.id && (grantMutation.isPending || revokeMutation.isPending);
 

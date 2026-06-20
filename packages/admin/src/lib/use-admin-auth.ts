@@ -46,6 +46,9 @@ export function useAdminAuth(): UseAdminAuth {
     }, []);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- standard
+        // fetch-on-mount: setState only happens after the awaited API call
+        // resolves, not synchronously during this effect.
         hydrate();
     }, [hydrate]);
 

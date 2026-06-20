@@ -19,6 +19,18 @@ const STATUS_COLORS: Record<string, string> = {
     cancelled: 'bg-gray-100 text-gray-600',
 };
 
+interface Booking {
+    id: string;
+    status: string;
+    eventDate?: string;
+    clientName?: string;
+    clientEmail?: string;
+    vendor?: { name?: string };
+    service?: { name?: string };
+    currency?: string;
+    totalPrice?: number;
+}
+
 export default function BookingsPage() {
     const { status } = useAdminAuth();
     const router = useRouter();
@@ -40,7 +52,7 @@ export default function BookingsPage() {
         placeholderData: (prev) => prev,
     });
 
-    const bookings: any[] = Array.isArray(data) ? data : (data?.items ?? data?.bookings ?? []);
+    const bookings: Booking[] = Array.isArray(data) ? data : (data?.items ?? data?.bookings ?? []);
     const total: number = data?.total ?? bookings.length;
     const totalPages = Math.ceil(total / 20);
 
@@ -144,7 +156,7 @@ export default function BookingsPage() {
                             </tr>
                         )}
 
-                        {!isLoading && bookings.map((booking: any) => {
+                        {!isLoading && bookings.map((booking: Booking) => {
                             const isPending = booking.status === 'pending';
                             const isProcessing = actionId === booking.id && statusMutation.isPending;
                             const eventDate = booking.eventDate

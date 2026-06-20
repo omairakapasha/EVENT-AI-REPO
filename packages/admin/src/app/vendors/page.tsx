@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getVendors, updateVendorStatus } from "@/lib/api";
+import type { Vendor } from "@/lib/types";
 import { Check, X, Loader2, ChevronLeft, ChevronRight, Store, Search, Ban } from "lucide-react";
 import { cn } from "@repo/ui/lib/utils";
 import { useState, useCallback, useEffect } from "react";
@@ -116,7 +117,7 @@ export default function VendorsPage() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        {vendors.map((vendor: any) => (
+                        {vendors.map((vendor: Vendor) => (
                             <tr key={vendor.id} className="hover:bg-gray-50/50 transition-colors">
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">

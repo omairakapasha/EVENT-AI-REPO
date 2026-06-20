@@ -55,6 +55,8 @@ export default function PricingPage() {
     const [hasMounted, setHasMounted] = useState(false);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional
+        // client-only mount guard to avoid SSR/hydration mismatch.
         setHasMounted(true);
     }, []);
 

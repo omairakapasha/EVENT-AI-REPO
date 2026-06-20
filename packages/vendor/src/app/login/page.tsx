@@ -46,6 +46,8 @@ function LoginContent() {
     };
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional
+        // client-only mount guard to avoid SSR/hydration mismatch.
         setHasMounted(true);
         // Show OAuth errors passed back from the backend redirect
         const oauthError = searchParams?.get('error');

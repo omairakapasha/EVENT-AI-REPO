@@ -2,10 +2,25 @@
 
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 import { useAdminAuth } from "@/lib/use-admin-auth";
 import { getCategories, createCategory, deleteCategory } from "@/lib/api";
-import { Save, Trash2, Plus, Loader2, Info, Tag } from "lucide-react";
+import { Trash2, Plus, Loader2, Info, Tag } from "lucide-react";
 import toast from "react-hot-toast";
+
+interface Category {
+    id: string;
+    name: string;
+    slug: string;
+    description?: string;
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+    if (isAxiosError(error)) {
+        return error.response?.data?.message || fallback;
+    }
+    return fallback;
+}
 
 export default function SettingsPage() {
     const { user } = useAdminAuth();
@@ -28,8 +43,8 @@ export default function SettingsPage() {
             queryClient.invalidateQueries({ queryKey: ["categories"] });
             setNewCategory({ name: "", slug: "", description: "" });
         },
-        onError: (error: any) => {
-            toast.error(error.response?.data?.message || "Failed to create category");
+        onError: (error: unknown) => {
+            toast.error(errorMessage(error, "Failed to create category"));
         },
     });
 
@@ -39,8 +54,8 @@ export default function SettingsPage() {
             toast.success("Category deleted successfully");
             queryClient.invalidateQueries({ queryKey: ["categories"] });
         },
-        onError: (error: any) => {
-            toast.error(error.response?.data?.message || "Failed to delete category");
+        onError: (error: unknown) => {
+            toast.error(errorMessage(error, "Failed to delete category"));
         },
     });
 
@@ -121,7 +136,7 @@ export default function SettingsPage() {
                     ) : (
                         <div className="space-y-2 mb-6">
                             {categories && categories.length > 0 ? (
-                                categories.map((category: any) => (
+                                categories.map((category: Category) => (
                                     <div
                                         key={category.id}
                                         className="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors"

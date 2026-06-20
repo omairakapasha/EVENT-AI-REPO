@@ -9,6 +9,7 @@ import {
     ArrowUpRight, Clock,
 } from "lucide-react";
 import { getStats, getVendors, updateVendorStatus } from "@/lib/api";
+import type { Vendor } from "@/lib/types";
 import toast from "react-hot-toast";
 
 export default function Dashboard() {
@@ -121,7 +122,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-                    <p className="mt-1 text-sm text-gray-500">Welcome back — here's what's happening.</p>
+                    <p className="mt-1 text-sm text-gray-500">Welcome back — here&apos;s what&apos;s happening.</p>
                 </div>
                 <div className="flex items-center gap-2 rounded-xl bg-white border border-gray-100 px-4 py-2 shadow-sm">
                     <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -247,7 +248,7 @@ export default function Dashboard() {
                         <Store className="h-4 w-4 text-gray-400" />
                     </div>
                     <div className="divide-y divide-gray-50">
-                        {recentVendors?.slice(0, 5).map((vendor: any) => {
+                        {recentVendors?.slice(0, 5).map((vendor: Vendor) => {
                             const isPending = vendor.status === "PENDING" || vendor.status === "INACTIVE";
                             const isProcessing = actionVendorId === vendor.id && statusMutation.isPending;
 
