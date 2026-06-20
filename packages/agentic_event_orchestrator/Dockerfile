@@ -44,6 +44,8 @@ COPY --chown=appuser:appgroup guardrails.py rate_limiter.py service_auth.py ./
 # Alembic migrations — needed so the image can run `alembic upgrade head` on deploy
 COPY --chown=appuser:appgroup alembic ./alembic
 COPY --chown=appuser:appgroup alembic.ini ./
+COPY --chown=appuser:appgroup start.sh ./
+RUN chmod +x start.sh
 
 # Activate venv via PATH
 ENV PATH="/app/.venv/bin:$PATH" \
@@ -61,4 +63,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
         "import os,urllib.request; urllib.request.urlopen('http://localhost:'+os.environ.get('PORT','8000')+'/health')"
 
 # Shell form so ${PORT} expands at runtime — honors platform-injected port.
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
+CMD ["./start.sh"]

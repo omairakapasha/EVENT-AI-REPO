@@ -34,6 +34,8 @@ COPY --from=builder --chown=appuser:appgroup /app/.venv /app/.venv
 COPY --chown=appuser:appgroup src ./src
 COPY --chown=appuser:appgroup alembic ./alembic
 COPY --chown=appuser:appgroup alembic.ini ./
+COPY --chown=appuser:appgroup start.sh ./
+RUN chmod +x start.sh
 
 # Activate venv via PATH
 ENV PATH="/app/.venv/bin:$PATH" \
@@ -51,4 +53,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
         "import os,urllib.request; urllib.request.urlopen('http://localhost:'+os.environ.get('PORT','5000')+'/api/v1/health')"
 
 # Shell form so ${PORT} expands at runtime — honors platform-injected port.
-CMD uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-5000} --workers 2
+CMD ["./start.sh"]
