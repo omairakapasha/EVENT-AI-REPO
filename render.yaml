@@ -39,8 +39,7 @@ services:
     dockerContext: packages/backend
     plan: free
     healthCheckPath: /api/v1/health
-    # Apply migrations before traffic is routed to the new version.
-    preDeployCommand: alembic upgrade head
+    # Note: preDeployCommand not supported on free tier - run migrations manually after first deploy
     envVars:
       - key: DATABASE_URL
         sync: false               # Neon pooled connection string
@@ -113,7 +112,7 @@ services:
     dockerContext: packages/agentic_event_orchestrator
     plan: free
     healthCheckPath: /health
-    preDeployCommand: alembic upgrade head
+    # Note: preDeployCommand not supported on free tier - run migrations manually after first deploy
     envVars:
       - key: DATABASE_URL
         sync: false               # same Neon pooled connection string as backend
