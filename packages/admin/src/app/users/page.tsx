@@ -201,8 +201,8 @@ export default function UsersPage() {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-500">
-                                        {user.last_login_at || user.lastLoginAt
-                                            ? new Date(user.last_login_at || user.lastLoginAt).toLocaleDateString()
+                                        {(user.last_login_at || user.lastLoginAt)
+                                            ? new Date(user.last_login_at || user.lastLoginAt!).toLocaleDateString()
                                             : "Never"}
                                     </td>
                                     <td className="px-6 py-4">
