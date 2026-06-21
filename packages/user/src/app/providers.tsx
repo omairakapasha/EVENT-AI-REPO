@@ -2,12 +2,17 @@
 
 import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { Toaster } from "react-hot-toast";
 import { TermsModal } from "@/components/terms-modal";
 import { api, acceptTerms } from "@/lib/api";
 
 function TermsGate({ children }: { children: React.ReactNode }) {
     const queryClient = useQueryClient();
+    const pathname = usePathname();
+
+    // Skip TermsGate on auth callback page - let tokens be stored first
+    const isAuthCallback = pathname === "/auth/callback";
 
     const { data: user } = useQuery({
         queryKey: ["me-terms"],
@@ -19,6 +24,7 @@ function TermsGate({ children }: { children: React.ReactNode }) {
                 return null;
             }
         },
+        enabled: !isAuthCallback && typeof window !== 'undefined' && !!localStorage.getItem('access_token'),
         retry: false,
         staleTime: Infinity,
     });

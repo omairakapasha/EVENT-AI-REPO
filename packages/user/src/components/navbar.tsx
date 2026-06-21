@@ -29,6 +29,11 @@ export function Navbar() {
     const userMenuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        // Skip on auth callback page - let tokens be stored first
+        if (pathname === "/auth/callback") {
+            return;
+        }
+
         // Only fetch user data if token exists (user is logged in)
         const token = localStorage.getItem('access_token');
         if (!token) {
@@ -51,7 +56,7 @@ export function Navbar() {
                 setUserName(null);
                 setIsLoggedIn(false);
             });
-    }, []);
+    }, [pathname]);
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 8);
