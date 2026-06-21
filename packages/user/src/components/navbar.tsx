@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Calendar, Store, MessageSquare, User, Menu, X, LogOut, ChevronDown, Package } from "lucide-react";
 import { cn } from "@repo/ui/lib/utils";
 import { NotificationBell } from "./notification-bell";
+import { logout, getUserProfile } from "@/lib/api";
 
 const navigation = [
     { name: "My Events", href: "/dashboard", icon: Calendar },
@@ -27,13 +28,10 @@ export function Navbar() {
     const userMenuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        // Fetch user data from API since we use httpOnly cookies
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1"}/users/me`, {
-            credentials: "include",
-        })
-            .then(res => res.json())
-            .then(data => {
-                const user = data.data || data;
+        // Fetch user data using the API client (handles both cookies and localStorage tokens)
+        getUserProfile()
+            .then(response => {
+                const user = response.data || response;
                 if (user) {
                     setUserName(`${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email || "User");
                     setIsPro(user.subscription_status === "pro");
@@ -58,23 +56,16 @@ export function Navbar() {
     }, []);
 
     const handleLogout = async () => {
-        try {
-            await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1"}/auth/logout`, {
-                method: "POST",
-                credentials: "include",
-            });
-        } catch {}
+        await logout();
         router.push("/login");
     };
 
     const [isLoggedIn, setIsLoggedIn] = useState(false);
 
     useEffect(() => {
-        // Check auth status via API (httpOnly cookies)
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1"}/users/me`, {
-            credentials: "include",
-        })
-            .then(res => setIsLoggedIn(res.ok))
+        // Check auth status using the API client
+        getUserProfile()
+            .then(() => setIsLoggedIn(true))
             .catch(() => setIsLoggedIn(false));
     }, []);
 

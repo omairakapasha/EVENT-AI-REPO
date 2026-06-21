@@ -10,6 +10,20 @@ export const api = axios.create({
     withCredentials: true,
 });
 
+// Request interceptor — attach access token from localStorage if available
+api.interceptors.request.use(
+    (config) => {
+        if (typeof window !== 'undefined') {
+            const accessToken = localStorage.getItem('access_token');
+            if (accessToken) {
+                config.headers.Authorization = `Bearer ${accessToken}`;
+            }
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
 // Response interceptor — handle 401 via httpOnly cookie refresh
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -46,13 +60,40 @@ api.interceptors.response.use(
             isRefreshing = true;
 
             try {
-                // Refresh token is in httpOnly cookie — sent automatically via withCredentials
-                await api.post('/auth/refresh');
-                processQueue(null);
-                return api(originalRequest);
+                // Try refreshing with localStorage refresh token
+                const refreshToken = typeof window !== 'undefined' 
+                    ? localStorage.getItem('refresh_token') 
+                    : null;
+                
+                if (refreshToken) {
+                    const response = await axios.post(
+                        `${API_URL}/auth/refresh`,
+                        { refresh_token: refreshToken },
+                        { withCredentials: true }
+                    );
+                    
+                    const { access_token, refresh_token: newRefreshToken } = response.data;
+                    
+                    if (typeof window !== 'undefined') {
+                        localStorage.setItem('access_token', access_token);
+                        if (newRefreshToken) {
+                            localStorage.setItem('refresh_token', newRefreshToken);
+                        }
+                    }
+                    
+                    processQueue(null);
+                    return api(originalRequest);
+                } else {
+                    // Fallback to httpOnly cookie refresh
+                    await api.post('/auth/refresh');
+                    processQueue(null);
+                    return api(originalRequest);
+                }
             } catch (refreshError) {
                 processQueue(refreshError as Error);
                 if (typeof window !== 'undefined') {
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('refresh_token');
                     window.location.href = '/login';
                 }
                 return Promise.reject(refreshError);
@@ -276,4 +317,19 @@ export const markAllNotificationsAsRead = async () => {
 export const acceptTerms = async () => {
     const response = await api.post("/users/accept-terms");
     return response.data;
+};
+
+// Auth helpers
+export const logout = async () => {
+    try {
+        await api.post("/auth/logout");
+    } catch (error) {
+        console.error("Logout error:", error);
+    } finally {
+        // Always clear localStorage tokens
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+        }
+    }
 };

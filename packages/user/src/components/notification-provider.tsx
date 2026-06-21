@@ -85,14 +85,21 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         }));
     };
 
-    // Real-time SSE synchronization — token is in httpOnly cookie
+    // Real-time SSE synchronization — attach token from localStorage
     useEffect(() => {
         let eventSource: EventSource | null = null;
 
         const connectSSE = () => {
             const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
-            // Token is in httpOnly cookie, sent automatically via EventSource
-            eventSource = new EventSource(`${API_URL}/sse/stream`);
+            const token = localStorage.getItem('access_token');
+            
+            if (!token) {
+                console.warn('[SSE] No access token found, skipping SSE connection');
+                return;
+            }
+            
+            // EventSource doesn't support custom headers, so pass token as query param
+            eventSource = new EventSource(`${API_URL}/sse/stream?token=${token}`);
 
             eventSource.addEventListener('notification', () => {
                 queryClient.invalidateQueries({ queryKey: ["notifications"] });
@@ -100,6 +107,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
             eventSource.onerror = () => {
                 eventSource?.close();
+                // Retry connection after 5 seconds
                 setTimeout(connectSSE, 5000);
             };
         };

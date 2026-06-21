@@ -39,22 +39,26 @@ async def _event_stream(
 @router.get("/stream")
 async def sse_stream(
     request: Request,
+    token: str | None = None,  # Query param for EventSource (can't send headers)
     cm: SSEConnectionManager = Depends(get_connection_manager),
 ):
     """
-    Server-Sent Events stream. Authenticates via httpOnly access_token cookie.
+    Server-Sent Events stream. Authenticates via:
+    1. Query parameter ?token=<jwt> (for cross-origin EventSource)
+    2. httpOnly access_token cookie (fallback for same-origin)
     Returns a persistent text/event-stream response.
     """
-    token = request.cookies.get("access_token")
-    if not token:
+    # Try query param first, then fall back to cookie
+    auth_token = token or request.cookies.get("access_token")
+    if not auth_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"code": "AUTH_UNAUTHORIZED", "message": "No access token cookie found."},
+            detail={"code": "AUTH_UNAUTHORIZED", "message": "No access token provided."},
         )
 
     async with async_session_maker() as session:
         try:
-            user = await AuthService.verify_access_token(token, session)
+            user = await AuthService.verify_access_token(auth_token, session)
         except HTTPException:
             raise
         except Exception:
