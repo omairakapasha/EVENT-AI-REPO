@@ -31,10 +31,14 @@ function CallbackHandler() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const handled = useRef(false);
+    const tokensStored = useRef(false);
 
     useEffect(() => {
         // Guard against React strict-mode double-invocation
-        if (handled.current) return;
+        if (handled.current) {
+            console.log("[OAuth Callback] Already handled, skipping");
+            return;
+        }
         handled.current = true;
 
         const error = searchParams.get("error");
@@ -50,17 +54,33 @@ function CallbackHandler() {
             const msg = encodeURIComponent(
                 ERROR_MESSAGES[error] ?? "Google sign-in failed. Please try again."
             );
+            console.log("[OAuth Callback] Redirecting to login with error:", error);
             router.replace(`/login?error=${msg}`);
             return;
         }
 
         // ── Tokens passed via URL (cross-domain OAuth) ──────────────
-        if (accessToken && refreshToken) {
+        if (accessToken && refreshToken && !tokensStored.current) {
             console.log("[OAuth Callback] Storing tokens in localStorage");
-            // Store tokens in localStorage for subsequent API calls
+            tokensStored.current = true;
+            
+            // Store tokens synchronously
             localStorage.setItem("access_token", accessToken);
             localStorage.setItem("refresh_token", refreshToken);
-            router.replace("/dashboard");
+            
+            // Verify tokens were stored
+            const storedAccess = localStorage.getItem("access_token");
+            const storedRefresh = localStorage.getItem("refresh_token");
+            console.log("[OAuth Callback] Tokens stored successfully:", {
+                access: !!storedAccess,
+                refresh: !!storedRefresh
+            });
+            
+            // Small delay to ensure storage completes
+            setTimeout(() => {
+                console.log("[OAuth Callback] Redirecting to dashboard");
+                router.replace("/dashboard");
+            }, 100);
             return;
         }
 
