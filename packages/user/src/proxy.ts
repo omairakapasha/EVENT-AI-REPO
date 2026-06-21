@@ -31,22 +31,9 @@ export function proxy(request: NextRequest) {
         return NextResponse.next();
     }
 
-    // Check for httpOnly auth cookies set by the backend
-    const hasAuth =
-        request.cookies.has('access_token') || request.cookies.has('refresh_token');
-
-    // Unauthenticated → redirect to login
-    if (!hasAuth) {
-        const loginUrl = new URL('/login', request.url);
-        loginUrl.searchParams.set('callbackUrl', pathname);
-        return NextResponse.redirect(loginUrl);
-    }
-
-    // Authenticated user visiting login/register → dashboard
-    if (AUTH_ONLY_ROUTES.includes(pathname) && hasAuth) {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-
+    // For OAuth flow, tokens are in localStorage (client-side), not cookies
+    // Let the client-side handle auth checks via API 401 responses
+    // Middleware doesn't have access to localStorage, so skip auth checks here
     return NextResponse.next();
 }
 

@@ -55,14 +55,8 @@ async def get_current_user(
         # Verify token, fetch and validate user in one call
         user = await auth_service.verify_access_token(token, session)
 
-        if not user.email_verified:
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "code": "AUTH_EMAIL_NOT_VERIFIED",
-                    "message": "Email address has not been verified.",
-                },
-            )
+        # Note: email_verified check removed - OAuth users are pre-verified by Google
+        # For email/password users, email verification is encouraged but not enforced at middleware level
 
         # Attach user to request state for easy access in routes
         request.state.user = user

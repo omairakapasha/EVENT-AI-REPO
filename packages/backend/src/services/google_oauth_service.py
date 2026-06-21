@@ -447,8 +447,11 @@ class GoogleOAuthService:
         }
 
         user = await self.get_or_create_user(session, google_profile)
-        tokens = await auth_service.create_tokens(session, user)
+        # Commit user changes (including email_verified=True) BEFORE creating tokens
+        # This ensures the JWT contains the correct email_verified status
         await session.commit()
+        await session.refresh(user)  # Refresh to get committed state
+        tokens = await auth_service.create_tokens(session, user)
 
         log.info(
             "google_oauth.callback.success",
