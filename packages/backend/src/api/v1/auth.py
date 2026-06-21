@@ -722,10 +722,12 @@ async def google_callback(
     # so each portal (vendor:3000, admin:3002, user:3003) gets redirected correctly.
     origin = frontend_origin or settings.frontend_url
 
-    # Redirect to the /auth/callback page which will verify auth and redirect to dashboard
-    redirect_url = f"{origin}/auth/callback"
+    # For cross-domain OAuth (Render → Vercel), pass tokens via URL
+    # Frontend will store them and make authenticated requests
+    redirect_url = f"{origin}/auth/callback?access_token={tokens['access_token']}&refresh_token={tokens['refresh_token']}"
 
     log.info("google_oauth.callback.redirecting", redirect_to="/auth/callback", origin=origin)
     response = RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
+    # Still set cookies for same-origin scenarios (localhost dev)
     _set_auth_cookies(response, tokens)
     return response

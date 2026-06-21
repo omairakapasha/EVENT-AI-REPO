@@ -38,6 +38,8 @@ function CallbackHandler() {
         handled.current = true;
 
         const error = searchParams.get("error");
+        const accessToken = searchParams.get("access_token");
+        const refreshToken = searchParams.get("refresh_token");
 
         // ── Error redirect from backend ──────────────────────────────
         if (error) {
@@ -48,7 +50,16 @@ function CallbackHandler() {
             return;
         }
 
-        // ── Verify auth via API (httpOnly cookies are sent automatically) ──
+        // ── Tokens passed via URL (cross-domain OAuth) ──────────────
+        if (accessToken && refreshToken) {
+            // Store tokens in localStorage for subsequent API calls
+            localStorage.setItem("access_token", accessToken);
+            localStorage.setItem("refresh_token", refreshToken);
+            router.replace("/dashboard");
+            return;
+        }
+
+        // ── Fallback: Verify auth via API (httpOnly cookies for localhost dev) ──
         fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1"}/users/me`, {
             credentials: "include",
         })

@@ -1,8 +1,7 @@
 # Verify Render Deployment Script
-# Replace the URLs below with your actual Render URLs
+# Backend and Orchestrator URLs from Render
 
-# TODO: Update these with actual Render URLs
-$BACKEND_URL = "https://eventai-backend.onrender.com"
+$BACKEND_URL = "https://eventai-backend-upym.onrender.com"
 $ORCHESTRATOR_URL = "https://eventai-orchestrator.onrender.com"
 
 Write-Host "🔍 Verifying Render Deployment..." -ForegroundColor Cyan
