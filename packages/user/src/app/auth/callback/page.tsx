@@ -76,10 +76,10 @@ function CallbackHandler() {
                 refresh: !!storedRefresh
             });
             
-            // Small delay to ensure storage completes
+            // Use window.location for hard redirect (more reliable than router.replace)
+            console.log("[OAuth Callback] Redirecting to dashboard with window.location");
             setTimeout(() => {
-                console.log("[OAuth Callback] Redirecting to dashboard");
-                router.replace("/dashboard");
+                window.location.href = "/dashboard";
             }, 100);
             return;
         }
