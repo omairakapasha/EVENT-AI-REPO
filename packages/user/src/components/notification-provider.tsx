@@ -31,12 +31,13 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export function NotificationProvider({ children }: { children: ReactNode }) {
     const queryClient = useQueryClient();
 
-    // Fetch notifications using React Query — httpOnly cookies handle auth
+    // Fetch notifications using React Query — only if logged in
     const { data } = useQuery({
         queryKey: ["notifications"],
         queryFn: () => getUserNotifications(),
         refetchInterval: 60000, // Refetch every minute
         staleTime: 30000,
+        enabled: typeof window !== 'undefined' && !!localStorage.getItem('access_token'), // Only fetch if token exists
     });
 
     const notifications: Notification[] = data?.data || [];
@@ -88,13 +89,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     // Real-time SSE synchronization — attach token from localStorage
     useEffect(() => {
         let eventSource: EventSource | null = null;
+        let reconnectTimeout: NodeJS.Timeout | null = null;
 
         const connectSSE = () => {
             const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
             const token = localStorage.getItem('access_token');
             
             if (!token) {
-                console.warn('[SSE] No access token found, skipping SSE connection');
+                // No token = not logged in, don't try to connect
                 return;
             }
             
@@ -107,8 +109,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
             eventSource.onerror = () => {
                 eventSource?.close();
-                // Retry connection after 5 seconds
-                setTimeout(connectSSE, 5000);
+                // Only retry if token still exists (user still logged in)
+                if (localStorage.getItem('access_token')) {
+                    reconnectTimeout = setTimeout(connectSSE, 5000);
+                }
             };
         };
 
@@ -117,6 +121,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         return () => {
             if (eventSource) {
                 eventSource.close();
+            }
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
             }
         };
     }, [queryClient]);
