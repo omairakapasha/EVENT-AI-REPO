@@ -91,7 +91,9 @@ api.interceptors.response.use(
                 }
             } catch (refreshError) {
                 processQueue(refreshError as Error);
-                if (typeof window !== 'undefined') {
+                // Only clear tokens and redirect if we're not on the callback page
+                if (typeof window !== 'undefined' && !window.location.pathname.includes('/auth/callback')) {
+                    console.log('[API] Refresh failed, clearing tokens and redirecting to login');
                     localStorage.removeItem('access_token');
                     localStorage.removeItem('refresh_token');
                     window.location.href = '/login';

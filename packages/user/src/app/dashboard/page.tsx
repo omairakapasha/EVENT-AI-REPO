@@ -47,6 +47,15 @@ const quickActions = [
 ];
 
 export default function DashboardPage() {
+    // Debug: Log when dashboard mounts
+    useEffect(() => {
+        console.log('[Dashboard] Page mounted');
+        console.log('[Dashboard] Tokens in localStorage:', {
+            access: !!localStorage.getItem('access_token'),
+            refresh: !!localStorage.getItem('refresh_token')
+        });
+    }, []);
+
     const { data: events, isLoading: eventsLoading } = useQuery({
         queryKey: ["events"],
         queryFn: () => getUserEvents(),
