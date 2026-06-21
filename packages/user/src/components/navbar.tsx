@@ -24,10 +24,19 @@ export function Navbar() {
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [userName, setUserName] = useState<string | null>(null);
     const [isPro, setIsPro] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const userMenuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        // Only fetch user data if token exists (user is logged in)
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            setUserName(null);
+            setIsLoggedIn(false);
+            return;
+        }
+
         // Fetch user data using the API client (handles both cookies and localStorage tokens)
         getUserProfile()
             .then(response => {
@@ -35,9 +44,13 @@ export function Navbar() {
                 if (user) {
                     setUserName(`${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email || "User");
                     setIsPro(user.subscription_status === "pro");
+                    setIsLoggedIn(true);
                 }
             })
-            .catch(() => setUserName(null));
+            .catch(() => {
+                setUserName(null);
+                setIsLoggedIn(false);
+            });
     }, []);
 
     useEffect(() => {
@@ -59,15 +72,6 @@ export function Navbar() {
         await logout();
         router.push("/login");
     };
-
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-    useEffect(() => {
-        // Check auth status using the API client
-        getUserProfile()
-            .then(() => setIsLoggedIn(true))
-            .catch(() => setIsLoggedIn(false));
-    }, []);
 
     if (pathname === "/login" || pathname === "/signup" || pathname === "/register") return null;
 
