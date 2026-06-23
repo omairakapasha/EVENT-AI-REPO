@@ -81,38 +81,30 @@ export function Navbar() {
     if (pathname === "/login" || pathname === "/signup" || pathname === "/register") return null;
 
     return (
-        <nav className="sticky top-0 z-50 transition-all duration-300"
-            style={{
-                background: scrolled ? "rgba(239,236,227,0.97)" : "rgba(239,236,227,0.90)",
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                borderBottom: scrolled ? "1px solid rgba(26,61,100,0.15)" : "1px solid rgba(26,61,100,0.08)",
-                boxShadow: scrolled ? "0 4px 24px rgba(0,0,0,0.06)" : "none",
-            }}
+        <nav className="sticky top-0 z-50 border-b border-surface-200 bg-white/95 backdrop-blur-md transition-all duration-300 dark:border-surface-800 dark:bg-surface-900/95"
             role="navigation" aria-label="Main navigation">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="flex h-16 items-center justify-between">
                     {/* Logo */}
                     <Link href="/" className="flex items-center gap-2.5 group">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-xl overflow-hidden transition-transform group-hover:scale-105">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden transition-transform group-hover:scale-105">
                             <Image src="/logo.png" alt="Event-AI" width={32} height={32} className="object-contain" />
                         </div>
-                        <span className="text-base font-bold"
-                            style={{ background: "linear-gradient(135deg,#1A3D64,#96A78D)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                            Event-AI
-                        </span>
+                        <span className="text-base font-bold text-primary-600 dark:text-primary-400">Event-AI</span>
                     </Link>
 
                     {/* Desktop Nav */}
-                    <div className="hidden sm:flex sm:items-center sm:gap-0.5">
+                    <div className="hidden sm:flex sm:items-center sm:gap-1">
                         {navigation.map((item) => {
                             const isActive = pathname === item.href;
                             return (
                                 <Link key={item.name} href={item.href}
-                                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-150"
-                                    style={isActive ? { background: "rgba(26,61,100,0.08)", color: "#1A3D64" } : { color: "#64748b" }}
-                                    onMouseEnter={(e) => { if (!isActive) { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(26,61,100,0.05)"; (e.currentTarget as HTMLAnchorElement).style.color = "#1A3D64"; } }}
-                                    onMouseLeave={(e) => { if (!isActive) { (e.currentTarget as HTMLAnchorElement).style.background = "transparent"; (e.currentTarget as HTMLAnchorElement).style.color = "#64748b"; } }}
+                                    className={cn(
+                                        "flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-colors",
+                                        isActive
+                                            ? "bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300"
+                                            : "text-surface-600 hover:bg-surface-100 hover:text-primary-600 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-primary-300"
+                                    )}
                                 >
                                     <item.icon className="h-4 w-4" />
                                     {item.name}
@@ -127,39 +119,34 @@ export function Navbar() {
                         {isLoggedIn ? (
                             <div className="relative" ref={userMenuRef}>
                                 <button onClick={() => setUserMenuOpen(!userMenuOpen)}
-                                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-sm font-medium transition-all duration-150 hover:bg-[#EFECE3]">
-                                    <div className="relative flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
-                                        style={{ background: "linear-gradient(135deg,#1A3D64,#2a5a8f)" }}>
+                                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800">
+                                    <div className="relative flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white bg-primary-600 dark:bg-primary-500">
                                         {userName ? userName.charAt(0).toUpperCase() : "U"}
                                         {isPro && (
-                                            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[7px] font-bold text-white leading-none"
-                                                style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)" }}>
+                                            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[7px] font-bold text-white leading-none bg-warning-500">
                                                 P
                                             </span>
                                         )}
                                     </div>
-                                    <span className="hidden md:inline text-sm font-medium text-slate-700">{userName || "Account"}</span>
-                                    {isPro && <span className="hidden md:inline px-1.5 py-0.5 rounded-md text-[9px] font-bold text-white leading-none"
-                                        style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)" }}>PRO</span>}
-                                    <ChevronDown className="h-3 w-3 text-slate-400" />
+                                    <span className="hidden md:inline text-sm font-medium text-surface-700 dark:text-surface-300">{userName || "Account"}</span>
+                                    {isPro && <span className="hidden md:inline px-1.5 py-0.5 rounded-md text-[9px] font-bold text-white leading-none bg-warning-500">PRO</span>}
+                                    <ChevronDown className="h-3 w-3 text-surface-400" />
                                 </button>
                                 {userMenuOpen && (
-                                    <div className="absolute right-0 mt-2 w-52 rounded-2xl overflow-hidden z-50"
-                                        style={{ background: "white", border: "1px solid rgba(226,232,240,0.8)", boxShadow: "0 20px 40px rgba(0,0,0,0.12)" }}>
-                                        <div className="px-4 py-3 border-b border-gray-100">
-                                            <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Signed in as</p>
+                                    <div className="absolute right-0 mt-2 w-52 rounded-lg overflow-hidden z-50 border border-surface-200 bg-white shadow-lg dark:border-surface-700 dark:bg-surface-900">
+                                        <div className="px-4 py-3 border-b border-surface-200 dark:border-surface-700">
+                                            <p className="text-xs text-surface-400 uppercase tracking-wider font-semibold">Signed in as</p>
                                             <div className="flex items-center gap-2 mt-0.5">
-                                                <p className="text-sm font-semibold text-gray-900 truncate">{userName || "User"}</p>
+                                                <p className="text-sm font-semibold text-surface-900 truncate dark:text-surface-50">{userName || "User"}</p>
                                                 {isPro && (
-                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold text-white leading-none"
-                                                        style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)" }}>
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold text-white leading-none bg-warning-500">
                                                         PRO
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
                                         <button onClick={handleLogout}
-                                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors">
+                                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-error-600 hover:bg-error-50 transition-colors dark:text-error-400 dark:hover:bg-error-900/20">
                                             <LogOut className="h-4 w-4" />
                                             Sign out
                                         </button>
@@ -168,13 +155,12 @@ export function Navbar() {
                             </div>
                         ) : (
                             <Link href="/login"
-                                className="px-4 py-2 text-sm font-semibold text-white rounded-xl transition-all active:scale-[0.98]"
-                                style={{ background: "linear-gradient(135deg,#1A3D64,#2a5a8f)", boxShadow: "0 4px 12px rgba(26,61,100,0.3)" }}>
+                                className="px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors bg-primary-600 hover:bg-primary-700 shadow-sm">
                                 Sign in
                             </Link>
                         )}
                         <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            className="sm:hidden p-2 rounded-xl text-slate-500 hover:bg-[#EFECE3] transition-colors"
+                            className="sm:hidden p-2 rounded-lg text-surface-500 hover:bg-surface-100 transition-colors dark:hover:bg-surface-800"
                             aria-label="Toggle menu">
                             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                         </button>
@@ -184,14 +170,16 @@ export function Navbar() {
 
             {/* Mobile menu */}
             {mobileMenuOpen && (
-                <div className="sm:hidden border-t border-[#1A3D64]/10 bg-[#EFECE3]/95 backdrop-blur-xl">
+                <div className="sm:hidden border-t border-surface-200 bg-white dark:border-surface-800 dark:bg-surface-900">
                     <div className="px-4 py-3 space-y-1">
                         {navigation.map((item) => (
                             <Link key={item.name} href={item.href}
                                 onClick={() => setMobileMenuOpen(false)}
                                 className={cn(
-                                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
-                                    pathname === item.href ? "bg-[#1A3D64]/10 text-[#1A3D64]" : "text-slate-600 hover:bg-[#1A3D64]/05"
+                                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                                    pathname === item.href
+                                        ? "bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300"
+                                        : "text-surface-600 hover:bg-surface-100 hover:text-primary-600 dark:text-surface-400 dark:hover:bg-surface-800"
                                 )}>
                                 <item.icon className="h-5 w-5" />
                                 {item.name}
