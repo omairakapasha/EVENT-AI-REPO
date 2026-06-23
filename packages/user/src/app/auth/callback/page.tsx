@@ -62,6 +62,7 @@ function CallbackHandler() {
         // ── Tokens passed via URL (cross-domain OAuth) ──────────────
         if (accessToken && refreshToken && !tokensStored.current) {
             console.log("[OAuth Callback] Storing tokens in localStorage");
+            console.log("[OAuth Callback] Current URL:", window.location.href);
             tokensStored.current = true;
             
             // Store tokens synchronously
@@ -73,14 +74,20 @@ function CallbackHandler() {
             const storedRefresh = localStorage.getItem("refresh_token");
             console.log("[OAuth Callback] Tokens stored successfully:", {
                 access: !!storedAccess,
-                refresh: !!storedRefresh
+                refresh: !!storedRefresh,
+                accessPreview: storedAccess?.substring(0, 20) + '...'
             });
             
+            // Clear the URL to remove tokens from browser history
+            window.history.replaceState({}, document.title, '/auth/callback');
+            console.log("[OAuth Callback] Cleared tokens from URL");
+            
             // Use window.location for hard redirect (more reliable than router.replace)
-            console.log("[OAuth Callback] Redirecting to dashboard with window.location");
+            console.log("[OAuth Callback] Redirecting to dashboard in 500ms");
             setTimeout(() => {
+                console.log("[OAuth Callback] Executing redirect now");
                 window.location.href = "/dashboard";
-            }, 100);
+            }, 500);
             return;
         }
 

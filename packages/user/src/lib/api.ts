@@ -16,7 +16,10 @@ api.interceptors.request.use(
         if (typeof window !== 'undefined') {
             const accessToken = localStorage.getItem('access_token');
             if (accessToken) {
+                console.log('[API Request]', config.method?.toUpperCase(), config.url, '- Token attached');
                 config.headers.Authorization = `Bearer ${accessToken}`;
+            } else {
+                console.log('[API Request]', config.method?.toUpperCase(), config.url, '- No token found');
             }
         }
         return config;
@@ -48,7 +51,10 @@ api.interceptors.response.use(
         const originalRequest = error.config as import('axios').InternalAxiosRequestConfig & { _retry?: boolean };
 
         if (error.response?.status === 401 && !originalRequest._retry) {
+            console.log('[API 401]', originalRequest.method?.toUpperCase(), originalRequest.url, '- Attempting refresh');
+            
             if (isRefreshing) {
+                console.log('[API 401] Already refreshing, queuing request');
                 return new Promise((resolve, reject) => {
                     failedQueue.push({ resolve, reject });
                 })
@@ -65,6 +71,8 @@ api.interceptors.response.use(
                     ? localStorage.getItem('refresh_token') 
                     : null;
                 
+                console.log('[API Refresh] Using', refreshToken ? 'localStorage token' : 'httpOnly cookie');
+                
                 if (refreshToken) {
                     const response = await axios.post(
                         `${API_URL}/auth/refresh`,
@@ -73,6 +81,8 @@ api.interceptors.response.use(
                     );
                     
                     const { access_token, refresh_token: newRefreshToken } = response.data;
+                    
+                    console.log('[API Refresh] Success! Got new tokens');
                     
                     if (typeof window !== 'undefined') {
                         localStorage.setItem('access_token', access_token);
@@ -85,18 +95,29 @@ api.interceptors.response.use(
                     return api(originalRequest);
                 } else {
                     // Fallback to httpOnly cookie refresh
+                    console.log('[API Refresh] Trying httpOnly cookie refresh');
                     await api.post('/auth/refresh');
+                    console.log('[API Refresh] Cookie refresh success');
                     processQueue(null);
                     return api(originalRequest);
                 }
             } catch (refreshError) {
+                console.log('[API Refresh] Failed:', refreshError);
                 processQueue(refreshError as Error);
                 // Only clear tokens and redirect if we're not on the callback page
                 if (typeof window !== 'undefined' && !window.location.pathname.includes('/auth/callback')) {
                     console.log('[API] Refresh failed, clearing tokens and redirecting to login');
+                    console.log('[API] Current pathname:', window.location.pathname);
+                    console.log('[API] Refresh error:', refreshError);
                     localStorage.removeItem('access_token');
                     localStorage.removeItem('refresh_token');
-                    window.location.href = '/login';
+                    
+                    // Add a small delay to ensure logs are visible
+                    setTimeout(() => {
+                        console.log('[API] Executing redirect to /login');
+                        window.location.href = '/login';
+                    }, 100);
+                    return Promise.reject(refreshError);
                 }
                 return Promise.reject(refreshError);
             } finally {

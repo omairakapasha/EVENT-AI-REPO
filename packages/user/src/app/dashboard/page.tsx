@@ -49,10 +49,13 @@ const quickActions = [
 export default function DashboardPage() {
     // Debug: Log when dashboard mounts
     useEffect(() => {
-        console.log('[Dashboard] Page mounted');
+        console.log('[Dashboard] Page mounted - INITIAL');
+        console.log('[Dashboard] Current URL:', window.location.href);
+        console.log('[Dashboard] Pathname:', window.location.pathname);
         console.log('[Dashboard] Tokens in localStorage:', {
             access: !!localStorage.getItem('access_token'),
-            refresh: !!localStorage.getItem('refresh_token')
+            refresh: !!localStorage.getItem('refresh_token'),
+            accessPreview: localStorage.getItem('access_token')?.substring(0, 20) + '...'
         });
     }, []);
 
