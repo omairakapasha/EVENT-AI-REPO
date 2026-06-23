@@ -65,7 +65,12 @@ function LoginForm() {
                 throw new Error(data.error?.message || data.error || "Login failed");
             }
 
-            // httpOnly cookies are set by the backend on login
+            // Store tokens in localStorage (consistent with OAuth flow)
+            if (data.data?.token && data.data?.refresh_token) {
+                localStorage.setItem("access_token", data.data.token);
+                localStorage.setItem("refresh_token", data.data.refresh_token);
+            }
+
             const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
             router.push(callbackUrl);
         } catch (err) {
