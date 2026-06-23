@@ -133,10 +133,15 @@ export default function ChatPage() {
                 m.id === messageId ? { ...m, feedback: type } : m
             ));
 
+            const accessToken = localStorage.getItem('access_token');
+            
             // Call feedback API via proxy
             await fetch('/api/ai/feedback', { 
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+                },
                 body: JSON.stringify({ message_id: messageId, feedback: type }) 
             });
         } catch (e) {
@@ -172,10 +177,13 @@ export default function ChatPage() {
         setMessages(prev => [...prev, assistantMessage]);
 
         try {
+            const accessToken = localStorage.getItem('access_token');
+            
             const response = await fetch('/api/ai/chat/stream', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
                 },
                 body: JSON.stringify({
                     message: userMessage.content,

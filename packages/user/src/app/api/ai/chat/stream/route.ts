@@ -1,19 +1,12 @@
 import { NextRequest } from "next/server";
-import { cookies } from "next/headers";
 
 export const runtime = "edge";
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || process.env.AGENT_SERVICE_URL || "http://localhost:8000";
 
 export async function POST(req: NextRequest) {
-  // Read access_token from httpOnly cookie (set by backend on login)
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get("access_token")?.value || "";
-
-  // Prefer cookie-based token; fall back to any Authorization header from client
-  const authHeader = accessToken
-    ? `Bearer ${accessToken}`
-    : req.headers.get("authorization") ?? "";
+  // Get Authorization header from client (localStorage token attached by API interceptor)
+  const authHeader = req.headers.get("authorization") ?? "";
 
   const body = await req.text();
 
