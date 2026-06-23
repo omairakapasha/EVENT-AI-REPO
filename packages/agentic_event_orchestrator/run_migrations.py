@@ -11,7 +11,7 @@ def run_migrations():
     try:
         print("🔄 Running AI database migrations...")
         result = subprocess.run(
-            ["alembic", "upgrade", "head"],
+            ["uv", "run", "alembic", "upgrade", "head"],
             capture_output=True,
             text=True,
             check=False
@@ -26,7 +26,7 @@ def run_migrations():
         if "already exists" in result.stderr or "DuplicateTableError" in result.stderr:
             print("⚠️  Tables already exist, stamping current version...")
             stamp_result = subprocess.run(
-                ["alembic", "stamp", "head"],
+                ["uv", "run", "alembic", "stamp", "head"],
                 capture_output=True,
                 text=True,
                 check=False
