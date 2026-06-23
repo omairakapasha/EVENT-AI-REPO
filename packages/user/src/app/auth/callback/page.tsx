@@ -36,7 +36,6 @@ function CallbackHandler() {
     useEffect(() => {
         // Guard against React strict-mode double-invocation
         if (handled.current) {
-            console.log("[OAuth Callback] Already handled, skipping");
             return;
         }
         handled.current = true;
@@ -45,59 +44,38 @@ function CallbackHandler() {
         const accessToken = searchParams.get("access_token");
         const refreshToken = searchParams.get("refresh_token");
 
-        console.log("[OAuth Callback] error:", error);
-        console.log("[OAuth Callback] accessToken:", accessToken ? "present" : "missing");
-        console.log("[OAuth Callback] refreshToken:", refreshToken ? "present" : "missing");
-
         // ── Error redirect from backend ──────────────────────────────
         if (error) {
             const msg = encodeURIComponent(
                 ERROR_MESSAGES[error] ?? "Google sign-in failed. Please try again."
             );
-            console.log("[OAuth Callback] Redirecting to login with error:", error);
             router.replace(`/login?error=${msg}`);
             return;
         }
 
         // ── Tokens passed via URL (cross-domain OAuth) ──────────────
         if (accessToken && refreshToken && !tokensStored.current) {
-            console.log("[OAuth Callback] Storing tokens in localStorage");
-            console.log("[OAuth Callback] Current URL:", window.location.href);
             tokensStored.current = true;
             
             // Store tokens synchronously
             localStorage.setItem("access_token", accessToken);
             localStorage.setItem("refresh_token", refreshToken);
             
-            // Verify tokens were stored
-            const storedAccess = localStorage.getItem("access_token");
-            const storedRefresh = localStorage.getItem("refresh_token");
-            console.log("[OAuth Callback] Tokens stored successfully:", {
-                access: !!storedAccess,
-                refresh: !!storedRefresh,
-                accessPreview: storedAccess?.substring(0, 20) + '...'
-            });
-            
             // Clear the URL to remove tokens from browser history
             window.history.replaceState({}, document.title, '/auth/callback');
-            console.log("[OAuth Callback] Cleared tokens from URL");
             
-            // Use window.location for hard redirect (more reliable than router.replace)
-            console.log("[OAuth Callback] Redirecting to dashboard in 500ms");
+            // Use window.location for hard redirect
             setTimeout(() => {
-                console.log("[OAuth Callback] Executing redirect now");
                 window.location.href = "/dashboard";
             }, 500);
             return;
         }
 
         // ── Fallback: Verify auth via API (httpOnly cookies for localhost dev) ──
-        console.log("[OAuth Callback] No tokens in URL, trying cookie auth");
         fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1"}/users/me`, {
             credentials: "include",
         })
             .then((res) => {
-                console.log("[OAuth Callback] /users/me response status:", res.status);
                 if (res.ok) {
                     router.replace("/dashboard");
                 } else {
