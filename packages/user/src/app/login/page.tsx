@@ -142,44 +142,44 @@ function LoginForm() {
             </div>
 
             {/* ── Right: Login Form ── */}
-            <div className="flex items-center justify-center px-4 py-12 sm:px-8 bg-gray-50">
+            <div className="flex items-center justify-center px-4 py-12 sm:px-8 bg-canvas-100 dark:bg-surface-950">
                 <div className="w-full max-w-md">
                     {/* Mobile logo */}
                     <div className="flex items-center justify-center gap-2 mb-8 lg:hidden">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg overflow-hidden">
                             <Image src="/logo.png" alt="Event-AI" width={40} height={40} className="object-contain" />
                         </div>
-                        <span className="text-xl font-bold text-gray-900">Event-AI</span>
+                        <span className="text-xl font-bold text-primary-600 dark:text-primary-400">Event-AI</span>
                     </div>
 
-                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+                    <div className="rounded-xl border border-surface-200 bg-white shadow-lg p-8 dark:border-surface-800 dark:bg-surface-900">
                         <div className="mb-8">
-                            <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
-                            <p className="mt-1 text-sm text-gray-500">Sign in to your Event-AI account</p>
+                            <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-50">Welcome back</h1>
+                            <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Sign in to your Event-AI account</p>
                         </div>
 
                         {/* Status banners */}
                         {registered && (
-                            <div className="flex items-start gap-3 rounded-xl bg-green-50 border border-green-100 px-4 py-3 text-sm text-green-700 mb-6">
-                                <CheckCircle className="h-4 w-4 mt-0.5 shrink-0 text-green-500" />
+                            <div className="flex items-start gap-3 rounded-lg bg-success-50 border border-success-100 px-4 py-3 text-sm text-success-700 mb-6 dark:bg-success-900/20 dark:border-success-800 dark:text-success-400">
+                                <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" />
                                 Account created! Waiting for admin approval.
                             </div>
                         )}
                         {pendingMessage && (
-                            <div className="flex items-start gap-3 rounded-xl bg-amber-50 border border-amber-100 px-4 py-3 text-sm text-amber-700 mb-6">
-                                <Clock className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" />
+                            <div className="flex items-start gap-3 rounded-lg bg-warning-50 border border-warning-100 px-4 py-3 text-sm text-warning-700 mb-6 dark:bg-warning-900/20 dark:border-warning-800 dark:text-warning-400">
+                                <Clock className="h-4 w-4 mt-0.5 shrink-0" />
                                 Your account is pending admin approval. Please check back later.
                             </div>
                         )}
                         {rejectedMessage && (
-                            <div className="flex items-start gap-3 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700 mb-6">
-                                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-red-500" />
+                            <div className="flex items-start gap-3 rounded-lg bg-error-50 border border-error-100 px-4 py-3 text-sm text-error-700 mb-6 dark:bg-error-900/20 dark:border-error-800 dark:text-error-400">
+                                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                                 Your account has been rejected. Contact support for assistance.
                             </div>
                         )}
                         {error && (
-                            <div className="flex items-start gap-3 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700 mb-6">
-                                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-red-500" />
+                            <div className="flex items-start gap-3 rounded-lg bg-error-50 border border-error-100 px-4 py-3 text-sm text-error-700 mb-6 dark:bg-error-900/20 dark:border-error-800 dark:text-error-400">
+                                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                                 {error}
                             </div>
                         )}
@@ -189,10 +189,10 @@ function LoginForm() {
                             type="button"
                             onClick={handleGoogleSignIn}
                             disabled={googleLoading || loading}
-                            className="w-full flex items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:border-gray-300 hover:shadow active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-150"
+                            className="w-full flex items-center justify-center gap-3 rounded-lg border border-surface-300 bg-white px-4 py-3 text-sm font-medium text-surface-700 shadow-sm hover:bg-surface-50 hover:border-surface-400 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition-all dark:border-surface-700 dark:bg-surface-900 dark:text-surface-300 dark:hover:bg-surface-800"
                         >
                             {googleLoading ? (
-                                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                                <Loader2 className="h-5 w-5 animate-spin text-surface-400" />
                             ) : (
                                 <GoogleIcon className="h-5 w-5" />
                             )}
@@ -202,17 +202,17 @@ function LoginForm() {
                         {/* Divider */}
                         <div className="relative my-6">
                             <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-gray-200" />
+                                <div className="w-full border-t border-surface-200 dark:border-surface-700" />
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-white px-3 text-gray-400 font-medium tracking-wider">or</span>
+                                <span className="bg-white px-3 text-surface-400 font-medium tracking-wider dark:bg-surface-900">or</span>
                             </div>
                         </div>
 
                         {/* Email/Password Form */}
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-1.5">
-                                <label htmlFor="email" className="text-sm font-medium text-gray-700">
+                                <label htmlFor="email" className="text-sm font-medium text-surface-700 dark:text-surface-300">
                                     Email address
                                 </label>
                                 <input
@@ -222,16 +222,16 @@ function LoginForm() {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="you@example.com"
-                                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm placeholder:text-gray-400 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1A3D64]/40 focus:border-[#1A3D64] transition-all duration-150"
+                                    className="w-full rounded-lg border border-surface-300 bg-white px-4 py-3 text-sm text-surface-900 placeholder:text-surface-400 hover:border-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all dark:border-surface-700 dark:bg-surface-900 dark:text-surface-100 dark:placeholder:text-surface-500"
                                 />
                             </div>
 
                             <div className="space-y-1.5">
                                 <div className="flex items-center justify-between">
-                                    <label htmlFor="password" className="text-sm font-medium text-gray-700">
+                                    <label htmlFor="password" className="text-sm font-medium text-surface-700 dark:text-surface-300">
                                         Password
                                     </label>
-                                    <Link href="/forgot-password" className="text-xs font-medium text-[#1A3D64] hover:text-[#2a5a8f]">
+                                    <Link href="/forgot-password" className="text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
                                         Forgot password?
                                     </Link>
                                 </div>
@@ -243,12 +243,12 @@ function LoginForm() {
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="Enter your password"
-                                        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 pr-11 text-sm shadow-sm placeholder:text-gray-400 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1A3D64]/40 focus:border-[#1A3D64] transition-all duration-150"
+                                        className="w-full rounded-lg border border-surface-300 bg-white px-4 py-3 pr-11 text-sm text-surface-900 placeholder:text-surface-400 hover:border-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all dark:border-surface-700 dark:bg-surface-900 dark:text-surface-100 dark:placeholder:text-surface-500"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600 transition-colors dark:hover:text-surface-300"
                                         aria-label={showPassword ? "Hide password" : "Show password"}
                                     >
                                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -259,16 +259,16 @@ function LoginForm() {
                             <button
                                 type="submit"
                                 disabled={loading || googleLoading}
-                                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1A3D64] to-[#2a5a8f] px-4 py-3 text-sm font-semibold text-white shadow-sm hover:from-[#122d4a] hover:to-[#1A3D64] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-150"
+                                className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-3 text-sm font-semibold text-white hover:bg-primary-700 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-sm"
                             >
                                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                                 {loading ? "Signing in..." : "Sign in"}
                             </button>
                         </form>
 
-                        <p className="mt-6 text-center text-sm text-gray-500">
+                        <p className="mt-6 text-center text-sm text-surface-500 dark:text-surface-400">
                             Don&apos;t have an account?{" "}
-                            <Link href="/signup" className="font-semibold text-[#1A3D64] hover:text-[#2a5a8f]">
+                            <Link href="/signup" className="font-semibold text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
                                 Create one free
                             </Link>
                         </p>
