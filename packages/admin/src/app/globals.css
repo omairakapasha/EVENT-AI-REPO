@@ -4,8 +4,8 @@
 /* ── Brand palette ─────────────────────────────────────────────────────────
    primary  → navy   #1A3D64   (CTAs, links, headings)
    accent   → sage   #96A78D   (highlights, status badges)
-   canvas   → cream  #EFECE3   (sidebar, card backgrounds)
-   Admin uses a slightly cooler background to feel authoritative.
+   canvas   → cream  #EFECE3   (page backgrounds, cards)
+   All portals share the same warm, cream-based color theme.
    ───────────────────────────────────────────────────────────────────────── */
 
 :root {
@@ -13,16 +13,31 @@
   --brand-sage:  #96a78d;
   --brand-cream: #efece3;
 
-  /* Admin-specific surface — slightly cooler than user portal */
-  --background:  #f2f0ea;
-  --foreground:  #111827;
+  /* Match user/vendor portal warm theme */
+  --background:  #efece3;   /* cream page background */
+  --foreground:  #1e1c1a;   /* warm near-black text  */
   --card-bg:     #ffffff;
-  --card-border: #e3e0d8;
+  --card-border: #dedad0;
 
   --sidebar-bg:       #1a3d64;   /* navy sidebar */
   --sidebar-text:     #d0e2f2;
   --sidebar-active:   #2260a0;
   --sidebar-hover:    #153252;
+
+  /* Toast */
+  --toast-bg:     #ffffff;
+  --toast-color:  #1e1c1a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background:  #0f0e0d;
+    --foreground:  #f2f0ea;
+    --card-bg:     #1e1c1a;
+    --card-border: #363330;
+    --toast-bg:    #363330;
+    --toast-color: #f2f0ea;
+  }
 }
 
 @theme inline {
