@@ -31,9 +31,11 @@
         "typecheck": "turbo run typecheck"
     },
     "devDependencies": {
+
         "concurrently": "^9.2.1",
         "prettier": "^3.8.1",
         "rimraf": "^6.0.0",
+        "turbo": "latest",
         "turbo": "latest"
     },
     "engines": {
