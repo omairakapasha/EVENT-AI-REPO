@@ -1,4 +1,6 @@
-
+# ============================================================
+# Render Blueprint — Event-AI backend stack (FREE TIER)
+# ============================================================
 # Deploys the two Python (FastAPI) services on Render's free plan + a free
 # Redis (Key Value) instance. Postgres stays on Neon's free tier (external —
 # Render no longer offers a free managed Postgres plan), set via sync:false
